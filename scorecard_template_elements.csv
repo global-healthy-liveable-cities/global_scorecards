@@ -58,51 +58,51 @@ policy2_text6_checkbox,2,B,162,140,170,148,,0,1,0,0,,FFFFFF,L,,2,FALSE
 policy2_text6_response,2,T,163,143,168,146,dejavu,15,1,0,0,,FFFFFF,L,,2,FALSE
 walkability_description,2,T,110,153,207,157,dejavu,8,0,0,0,,FFFFFF,L,"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.",2,TRUE
 policy_box_3_description,2,T,110,175,207,179,dejavu,8,0,0,0,,FFFFFF,L,,2,TRUE
-policy_box_3,2,B,105,196,210,284,,0,1,0,0,,eaf2ec,L,,0,FALSE
-policy_checklist_header1,2,T,135,198,153,201,dejavu,8,1,0,0,,eaf2ec,C,Policy identified,3,TRUE
-policy_checklist_header2,2,T,154,198,171,201,dejavu,8,1,0,0,,eaf2ec,C,Specific standard,3,TRUE
-policy_checklist_header3,2,T,171,198,191,201,dejavu,8,1,0,0,,eaf2ec,C,Measurable target,3,TRUE
-policy_checklist_header4,2,T,190,198,208,201,dejavu,8,1,0,0,,eaf2ec,C,Health evidence supported,3,TRUE
-table_vline1,2,L,154,198,154,282,,0,0,0,0,,eaf2ec,L,,4,FALSE
-table_vline2,2,L,172,198,172,282,,0,0,0,0,,eaf2ec,L,,4,FALSE
-table_vline3,2,L,190,198,190,282,,0,0,0,0,,eaf2ec,L,,4,FALSE
-table_hline_mid,2,L,105,208,210,208,,0,0,0,0,,eaf2ec,L,,4,FALSE
-table_hline_bottom,2,L,105,284,210,284,,0,0,0,0,,eaf2ec,L,,4,FALSE
-policy3_text1,2,T,106,210,142,214,dejavu,8,0,1,0,,eaf2ec,L,Housing density requirements,3,TRUE
-policy3_text1_response1,2,T,141,210,145,213,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text1_response2,2,T,159,210,163,213,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text1_response3,2,T,177,210,181,213,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text1_response4,2,T,195,210,199,213,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text2,2,T,106,221,142,225,dejavu,8,0,1,0,,eaf2ec,L,Street connectivity or pedshed ratio,3,TRUE
-policy3_text2_response1,2,T,141,221,145,224,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text2_response2,2,T,159,221,163,224,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text2_response3,2,T,177,221,181,224,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text2_response4,2,T,195,221,199,224,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text3,2,T,106,232,142,236,dejavu,8,0,1,0,,eaf2ec,L,Parking restrictions to discourage car use,3,TRUE
-policy3_text3_response1,2,T,141,232,145,235,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text3_response2,2,T,159,232,163,235,dejavu,15,1,0,0,,eaf2ec,L,partly,2,FALSE
-policy3_text3_response3,2,T,177,232,181,235,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text3_response4,2,T,195,232,199,235,dejavu,15,1,0,0,,eaf2ec,L,?,2,FALSE
-policy3_text4,2,T,106,243,142,247,dejavu,8,0,1,0,,eaf2ec,L,Pedestrian infrastructure provision,3,TRUE
-policy3_text4_response1,2,T,141,243,145,246,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text4_response2,2,T,159,243,163,246,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text4_response3,2,T,177,243,181,246,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text4_response4,2,T,195,243,199,246,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text5,2,T,106,254,142,258,dejavu,8,0,1,0,,eaf2ec,L,Cycling infrastructure provision,3,TRUE
-policy3_text5_response1,2,T,141,254,145,257,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text5_response2,2,T,159,254,163,257,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text5_response3,2,T,177,254,181,257,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text5_response4,2,T,195,254,199,257,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text6,2,T,106,265,142,269,dejavu,8,0,1,0,,eaf2ec,L,Walking participation targets,3,TRUE
-policy3_text6_response1,2,T,141,265,145,268,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text6_response2,2,T,159,265,163,268,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text6_response3,2,T,177,265,181,268,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text6_response4,2,T,195,265,199,268,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text7,2,T,106,276,142,280,dejavu,8,0,1,0,,eaf2ec,L,Cycling participation targets,3,TRUE
-policy3_text7_response1,2,T,141,276,145,279,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text7_response2,2,T,159,276,163,279,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
-policy3_text7_response3,2,T,177,276,181,279,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
-policy3_text7_response4,2,T,195,276,199,279,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy_box_3,2,B,105,200,210,288,,0,1,0,0,,eaf2ec,L,,0,FALSE
+policy_checklist_header1,2,T,135,202,153,205,dejavu,8,1,0,0,,eaf2ec,C,Policy identified,3,TRUE
+policy_checklist_header2,2,T,154,202,171,205,dejavu,8,1,0,0,,eaf2ec,C,Specific standard,3,TRUE
+policy_checklist_header3,2,T,171,202,191,205,dejavu,8,1,0,0,,eaf2ec,C,Measurable target,3,TRUE
+policy_checklist_header4,2,T,190,202,208,205,dejavu,8,1,0,0,,eaf2ec,C,Health evidence supported,3,TRUE
+table_vline1,2,L,154,202,154,286,,0,0,0,0,,eaf2ec,L,,4,FALSE
+table_vline2,2,L,172,202,172,286,,0,0,0,0,,eaf2ec,L,,4,FALSE
+table_vline3,2,L,190,202,190,286,,0,0,0,0,,eaf2ec,L,,4,FALSE
+table_hline_mid,2,L,105,212,210,212,,0,0,0,0,,eaf2ec,L,,4,FALSE
+table_hline_bottom,2,L,105,288,210,288,,0,0,0,0,,eaf2ec,L,,4,FALSE
+policy3_text1,2,T,106,214,142,218,dejavu,8,0,1,0,,eaf2ec,L,Housing density requirements,3,TRUE
+policy3_text1_response1,2,T,141,214,145,217,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text1_response2,2,T,159,214,163,217,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text1_response3,2,T,177,214,181,217,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text1_response4,2,T,195,214,199,217,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text2,2,T,106,225,142,229,dejavu,8,0,1,0,,eaf2ec,L,Street connectivity or pedshed ratio,3,TRUE
+policy3_text2_response1,2,T,141,225,145,228,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text2_response2,2,T,159,225,163,228,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text2_response3,2,T,177,225,181,228,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text2_response4,2,T,195,225,199,228,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text3,2,T,106,236,142,240,dejavu,8,0,1,0,,eaf2ec,L,Parking restrictions to discourage car use,3,TRUE
+policy3_text3_response1,2,T,141,236,145,239,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text3_response2,2,T,159,236,163,239,dejavu,15,1,0,0,,eaf2ec,L,partly,2,FALSE
+policy3_text3_response3,2,T,177,236,181,239,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text3_response4,2,T,195,236,199,239,dejavu,15,1,0,0,,eaf2ec,L,?,2,FALSE
+policy3_text4,2,T,106,247,142,251,dejavu,8,0,1,0,,eaf2ec,L,Pedestrian infrastructure provision,3,TRUE
+policy3_text4_response1,2,T,141,247,145,250,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text4_response2,2,T,159,247,163,250,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text4_response3,2,T,177,247,181,250,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text4_response4,2,T,195,247,199,250,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text5,2,T,106,258,142,262,dejavu,8,0,1,0,,eaf2ec,L,Cycling infrastructure provision,3,TRUE
+policy3_text5_response1,2,T,141,258,145,261,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text5_response2,2,T,159,258,163,261,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text5_response3,2,T,177,258,181,261,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text5_response4,2,T,195,258,199,261,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text6,2,T,106,269,142,273,dejavu,8,0,1,0,,eaf2ec,L,Walking participation targets,3,TRUE
+policy3_text6_response1,2,T,141,269,145,272,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text6_response2,2,T,159,269,163,272,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text6_response3,2,T,177,269,181,272,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text6_response4,2,T,195,269,199,272,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text7,2,T,106,280,142,284,dejavu,8,0,1,0,,eaf2ec,L,Cycling participation targets,3,TRUE
+policy3_text7_response1,2,T,141,280,145,283,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text7_response2,2,T,159,280,163,283,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
+policy3_text7_response3,2,T,177,280,181,283,dejavu,15,1,0,0,,eaf2ec,L,✓,2,FALSE
+policy3_text7_response4,2,T,195,280,199,283,dejavu,15,1,0,0,,eaf2ec,L,✗,2,FALSE
 health_header,3,T,110,13,210,16,dejavu,14,1,0,0,,FFFFFF,L,Health related urban policy,3,FALSE
 line1,3,L,105,13,105,284,,0,0,0,0,,FFFFFF,L,,3,FALSE
 intersections_header,3,T,12,13,94,16,dejavu,12,1,0,0,,FFFFFF,L,Street intersection density,2,FALSE

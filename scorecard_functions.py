@@ -344,6 +344,7 @@ def generate_scorecard(city,pages,title,author,policy_checks):
         pdf.set_image_filter("DCTDecode")
     pdf.set_title(title)
     pdf.set_author(author)
+    pdf.set_auto_page_break(False)
     pdf.add_font('dejavu',style='', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed.ttf', uni=True)
     pdf.add_font('dejavu',style='B', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Bold.ttf', uni=True)
     pdf.add_font('dejavu',style='I', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Oblique.ttf', uni=True)
@@ -379,6 +380,15 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     template["policy2_text5_response"] =policy_indicators[policy_checks['Presence'][4]]
     # Air pollution is a check of two policies met...
     template["policy2_text6_response"] =policy_indicators[(policy_checks['Presence'][5]+policy_checks['Presence'][6])/2].replace('~','½')
+    ## Walkable neighbourhood policy checklist
+    template["policy_box_3_description"] =f"The below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
+    
+    for i,policy in enumerate(policy_checks['Checklist'].index):
+        row = i+1
+        for j,item in enumerate([x for x in policy_checks['Checklist'][i][0]]):
+            col = j+1
+            template[f'policy3_text{row}_response{col}'] = item
+    
     template.render()
     # Set up page 3
     pdf.add_page()

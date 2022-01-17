@@ -381,7 +381,7 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     # Air pollution is a check of two policies met...
     template["policy2_text6_response"] =policy_indicators[(policy_checks['Presence'][5]+policy_checks['Presence'][6])/2].replace('~','½')
     ## Walkable neighbourhood policy checklist
-    template["policy_box_3_description"] =f"The below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
+    template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
     
     for i,policy in enumerate(policy_checks['Checklist'].index):
         row = i+1

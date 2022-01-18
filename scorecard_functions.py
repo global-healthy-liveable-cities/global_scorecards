@@ -377,6 +377,7 @@ def pdf_template_setup(csv_template_path):
     ## NOTE!! It is assumed that CSV has been saved using UTF8 encoding
     ## This allows special characters which may be required.
     elements = pd.read_csv(csv_template_path,encoding = "utf-8")
+    document_pages = elements.page.unique()
     elements = elements.to_dict(orient='records')
     elements = [{k:v if not str(v)=='nan' else None for k,v in x.items()} for x in elements]
     
@@ -397,7 +398,7 @@ def pdf_template_setup(csv_template_path):
             elements[i][plane] = int(planes[plane],16)
     
     pages = {}
-    for page in [1,2,3]:
+    for page in document_pages:
         pages[f'{page}'] = [x for x in elements if x['page']==page]
     return pages
 
@@ -413,7 +414,7 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     pdf.add_font('dejavu',style='B', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Bold.ttf', uni=True)
     pdf.add_font('dejavu',style='I', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Oblique.ttf', uni=True)
     pdf.add_font('dejavu',style='BI', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-BoldOblique.ttf', uni=True)
-    # Set up page 1
+    # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
     template["title_city"] = f"{city}"
@@ -422,21 +423,14 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     else:
         template["hero_image"] = f"hero_images/{city}.jpg"
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
-    template["1024px-RMIT_University_Logo.svg.png"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    template["University_of_Melbourne.png"] = f"logos/University_of_Melbourne.png"
-    template["North_Carolina_State_University"] = f"logos/University_of_Melbourne.png"
-    template["University_of_Southern_California"] = f"logos/University_of_Melbourne.png"
-    template["Australian_Catholic_University"] = f"logos/University_of_Melbourne.png"
-    template["University_of_Hong_Kong"] = f"logos/University_of_Melbourne.png"
-    template["Auckland_University_of_Technology"] = f"logos/University_of_Melbourne.png"
-    template["Northeastern_University"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
-    template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
     template.render()
-    # Set up page 2
-    pdf.add_page()
+    # Set up next page
+    pdf.add_page(orientation="L")
     template = FlexTemplate(pdf,elements=pages['2'])
+    template.render()
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf,elements=pages['3'])
     template["access_profile"] = f"cities/{city}/access_profile.jpg"
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability.jpg"
     template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density.jpg"
@@ -450,7 +444,7 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     # Air pollution is a check of two policies met...
     template["policy2_text6_response"] =policy_indicators[(policy_checks['Presence'][5]+policy_checks['Presence'][6])/2].replace('~','½')
     ## Walkable neighbourhood policy checklist
-    template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
+    template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity. Sufficient density of dwellings and population is critical for walkability, because it determines the viability of local destinations and adequate public transport service.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
     
     for analysis in ['Checklist']:
         for i,policy in enumerate(policy_checks[analysis].index):
@@ -460,9 +454,10 @@ def generate_scorecard(city,pages,title,author,policy_checks):
                 template[f'policy_{analysis}_text{row}_response{col}'] = item
     
     template.render()
-    # Set up page 3
+    
+    # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf,elements=pages['3'])
+    template = FlexTemplate(pdf,elements=pages['4'])
     template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density.jpg"
     template["pct_access_500m_pt_gtfs_freq_20_score"] = f"cities/{city}/pct_access_500m_pt_gtfs_freq_20_score.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score.jpg"
@@ -475,6 +470,25 @@ def generate_scorecard(city,pages,title,author,policy_checks):
                 template[f'policy_{analysis}_text{row}_response{col}'] = item
     
     template.render()
+    
+    # Set up last page
+    pdf.add_page()
+    template = FlexTemplate(pdf,elements=pages['5'])
+    template["1024px-RMIT_University_Logo.svg.png"] = f"logos/1024px-RMIT_University_Logo.svg.png"
+    template["University_of_Melbourne.png"] = f"logos/University_of_Melbourne.png"
+    template["North_Carolina_State_University"] = f"logos/University_of_Melbourne.png"
+    template["University_of_Southern_California"] = f"logos/University_of_Melbourne.png"
+    template["Australian_Catholic_University"] = f"logos/University_of_Melbourne.png"
+    template["University_of_Hong_Kong"] = f"logos/University_of_Melbourne.png"
+    template["Auckland_University_of_Technology"] = f"logos/University_of_Melbourne.png"
+    template["Northeastern_University"] = f"logos/1024px-RMIT_University_Logo.svg.png"
+    template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
+    template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
+    template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
+    template["suggested_citation"] = f'Citation: Global Healthy & Sustainable Cities Indicators Collaboration. 2022. Urban Policy and Built Environment Scorecard 2020: Bangkok. https://doi.org/INSERT-DOI-HERE'
+    
+    template.render()
+    
     # Output scorecard pdf
     if debug == True:
         pdf.oversized_images = "DOWNSCALE"

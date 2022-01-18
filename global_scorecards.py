@@ -114,9 +114,9 @@ if __name__ == '__main__':
                 .loc[:,df_policy[policy_analysis].columns[-1]]
         # only retain relevant columns for this analysis
         df_policy[policy_analysis]=df_policy[policy_analysis][df_labels[df_labels['Display']==policy_analysis].index]
-    
-    # parse checklist   
-    df_policy['Checklist'] = df_policy['Checklist'].apply(lambda x: x.str.split(':'),axis=1)
+        if policy_analysis!='Presence':
+            # parse checklist   
+            df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
     cities = ['Bangkok','Hanoi','Melbourne','Mexico City']

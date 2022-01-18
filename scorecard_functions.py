@@ -15,8 +15,6 @@ import matplotlib.ticker as ticker
 from textwrap import wrap
 from fpdf import FPDF, FlexTemplate
 
-norm = mpl.colors.Normalize(vmin=0, vmax=100)
-
 # switch to low res for quick prototyping
 debug = False
 
@@ -45,6 +43,7 @@ def li_profile(city_stats, comparisons,title,cmap,path, width = fpdf2_mm_scale(8
     INDICATORS = city_stats.index
     # Colours
     GREY12 = "#1f1f1f"
+    norm = mpl.colors.Normalize(vmin=0, vmax=100)
     COLORS = cmap(list(norm(VALUES)))
     # Initialize layout in polar coordinates
     textsize = 12
@@ -271,7 +270,7 @@ def policy_rating(range,
     fig.savefig(path,dpi=dpi) 
     plt.close(fig)   
 
-def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,cmap):
+def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,cmap):
     """
     The function prepares a series of image resources required for the global 
     indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
@@ -289,8 +288,14 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
     profile_title = "Population %\nwith access\nwithin\n500m to..."
     city_stats = {}
     city_stats['access'] = df.loc[city,indicators]
-    # city_stats['access']
-    li_profile(city_stats=city_stats['access'], 
+    city_stats_index = city_stats['access'].index.tolist()
+    for i,item in enumerate(city_stats['access'].index):
+        if str(city_stats['access'][i])=='nan':
+            city_stats_index[i] = f"{city_stats['access'].index[i]} (not evaluated)"
+    city_stats['access'].index = city_stats_index
+    # city stats have NA replaced with zero for li profile to facilitate plotting of comparison
+    # it is not that there is no regular pt..
+    li_profile(city_stats=city_stats['access'].fillna(0), 
                comparisons = comparisons['access'],
                title=profile_title,
                cmap=cmap, 
@@ -337,6 +342,22 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
              f"({threshold_scenarios['data'].loc[row,city]}% of population within target threshold)"),
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}.jpg")
+             
+    # Policy ratings
+    policy_rating(
+              range = [0,24],
+              score = city_policy['Presence_rating'],
+              comparison = city_policy['Presence_global'],
+              label = '\nPolicies identified',
+              cmap=cmap,
+              path=f"cities/{city}/policy_presence_rating.jpg")
+    policy_rating(
+              range = [0,57],
+              score = city_policy['Checklist_rating'],
+              comparison = city_policy['Checklist_global'],
+              label = '',
+              cmap=cmap,
+              path=f"cities/{city}/policy_checklist_rating.jpg")
     return(city_path)
 
 
@@ -396,7 +417,10 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
     template["title_city"] = f"{city}"
-    template["hero_image"] = f"hero_images/{city}.jpg"
+    if not os.path.exists(f"hero_images/{city}.jpg"):
+        template["hero_alt"]="Please provide a high resolution 'hero image' for this city, ideally with dimensions in the ratio of 21:10 (e.g. 2100px by 1000px)"
+    else:
+        template["hero_image"] = f"hero_images/{city}.jpg"
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template["1024px-RMIT_University_Logo.svg.png"] = f"logos/1024px-RMIT_University_Logo.svg.png"
     template["University_of_Melbourne.png"] = f"logos/University_of_Melbourne.png"
@@ -428,11 +452,12 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     ## Walkable neighbourhood policy checklist
     template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
     
-    for i,policy in enumerate(policy_checks['Checklist'].index):
-        row = i+1
-        for j,item in enumerate([x for x in policy_checks['Checklist'][i][0]]):
-            col = j+1
-            template[f'policy3_text{row}_response{col}'] = item
+    for analysis in ['Checklist']:
+        for i,policy in enumerate(policy_checks[analysis].index):
+            row = i+1
+            for j,item in enumerate([x for x in policy_checks[analysis][i][0]]):
+                col = j+1
+                template[f'policy_{analysis}_text{row}_response{col}'] = item
     
     template.render()
     # Set up page 3
@@ -441,6 +466,14 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density.jpg"
     template["pct_access_500m_pt_gtfs_freq_20_score"] = f"cities/{city}/pct_access_500m_pt_gtfs_freq_20_score.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score.jpg"
+    
+    for analysis in ['PT','POS']:
+        for i,policy in enumerate(policy_checks[analysis].index):
+            row = i+1
+            for j,item in enumerate([x for x in policy_checks[analysis][i][0]]):
+                col = j+1
+                template[f'policy_{analysis}_text{row}_response{col}'] = item
+    
     template.render()
     # Output scorecard pdf
     if debug == True:

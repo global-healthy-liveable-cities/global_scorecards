@@ -88,7 +88,9 @@ if __name__ == '__main__':
         'worksheet':'data/Policy Figures 1 & 2_23 Dec_numerical.xlsx',
         'analyses': {
             'Presence':{'sheet_name':'Figure 1 - transposed evaluated'},
-            'Checklist':{'sheet_name':'Figure 2 - Tuples'}
+            'Checklist':{'sheet_name':'Figure 2 - Tuples'},
+            'PT':{'sheet_name':'Figure 2 - Tuples'},
+            'POS':{'sheet_name':'Figure 2 - Tuples'}
         },
         'parameters': {'header':[1],'nrows':25,'index_col':2},
         'column_formatting':'Policies of interest'
@@ -106,8 +108,10 @@ if __name__ == '__main__':
             header=policy_lookup['parameters']['header'],
             nrows=policy_lookup['parameters']['nrows'],
             index_col=policy_lookup['parameters']['index_col'])
-        # store overall rating for this analysis
-        df_policy[f'{policy_analysis}_rating'] = df_policy[policy_analysis].loc[:,df_policy[policy_analysis].columns[-1]]
+        if policy_analysis in ['Presence','Checklist']:
+            # store overall rating for this analysis
+            df_policy[f'{policy_analysis}_rating'] = df_policy[policy_analysis]\
+                .loc[:,df_policy[policy_analysis].columns[-1]]
         # only retain relevant columns for this analysis
         df_policy[policy_analysis]=df_policy[policy_analysis][df_labels[df_labels['Display']==policy_analysis].index]
     
@@ -115,45 +119,24 @@ if __name__ == '__main__':
     df_policy['Checklist'] = df_policy['Checklist'].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    cities = ['Bangkok','Melbourne','Mexico City']
+    cities = ['Bangkok','Hanoi','Melbourne','Mexico City']
+    # 'Olomouc' is a problem...
     for city in cities:
         print(city)
         year = 2020
         city_policy={}
         for policy_analysis in policy_lookup['analyses']:
-             city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
-             city_policy[f'{policy_analysis}_rating'] = df_policy[f'{policy_analysis}_rating'].loc[city]
-             city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
+            city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
+            if policy_analysis in ['Presence','Checklist']:
+                city_policy[f'{policy_analysis}_rating'] = df_policy[f'{policy_analysis}_rating'].loc[city]
+                city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
         
         # Generate resources
         if generate_resources:
-            scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,cmap)
-        
-        # Policy ratings
-        scorecard_functions.policy_rating(
-                  range = [0,24],
-                  score = city_policy['Presence_rating'],
-                  comparison = city_policy['Presence_global'],
-                  label = '\nPolicies identified',
-                  cmap=cmap,
-                  path=f"cities/{city}/policy_presence_rating.jpg")
-        scorecard_functions.policy_rating(
-                  range = [0,57],
-                  score = city_policy['Checklist_rating'],
-                  comparison = city_policy['Checklist_global'],
-                  label = '',
-                  cmap=cmap,
-                  path=f"cities/{city}/policy_checklist_rating.jpg")
+            scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,cmap)
         
         #Generate PDF reports for cities
         pages = scorecard_functions.pdf_template_setup('scorecard_template_elements.csv')
-        
-        # mock up for policy evaluation function
-        def policy_checklist():
-            policy_checks = [0,0,1]
-            return policy_checks
-        
-        policy_checks = policy_checklist()
         
         # instantiate template
         

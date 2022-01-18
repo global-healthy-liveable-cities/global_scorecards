@@ -229,6 +229,48 @@ def setup_thresholds(csv_thresholds_data,threshold_lookup):
     }
     return threshold_scenarios
 
+
+def policy_rating(range,
+                  score,
+                  cmap, 
+                  comparison = None,
+                  width = fpdf2_mm_scale(70), 
+                  height = fpdf2_mm_scale(15),
+                  label = 'Policies identified',
+                  path='policy_rating_test.jpg',
+                  dpi = 300):
+    textsize = 14
+    fig, ax = plt.subplots(figsize=(width, height))
+    fig.subplots_adjust(bottom=0)
+    cmap = cmap
+    norm = mpl.colors.Normalize(vmin=range[0], vmax=range[1])
+    fig.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=ax, 
+        orientation='horizontal',
+         #shrink=0.9, pad=0, aspect=90
+        )
+    # Format Global ticks
+    if comparison is None:
+        ax.xaxis.set_ticks([])
+    else:
+        ax.xaxis.set_major_locator(ticker.FixedLocator([comparison['50%']]))
+        ax.set_xticklabels([f'25 city median'])
+        ax.tick_params(labelsize=textsize)
+    # Format City ticks
+    ax_city = ax.twiny()
+    ax_city.set_xlim(range)
+    ax_city.xaxis.set_major_locator(ticker.FixedLocator([score]))
+    sep = ''
+    if comparison is not None and label=='':
+        sep = '\n'
+    ax_city.set_xticklabels([f"{sep}{str(score).rstrip('0').rstrip('.')}/{range[1]}{label}"])
+    ax_city.tick_params(labelsize=textsize)
+    # return figure with final styling
+    plt.tight_layout()
+    fig.savefig(path,dpi=dpi) 
+    plt.close(fig)   
+
 def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,cmap):
     """
     The function prepares a series of image resources required for the global 
@@ -296,6 +338,7 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}.jpg")
     return(city_path)
+
 
 def pdf_template_setup(csv_template_path):
     """
@@ -373,6 +416,8 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     template["access_profile"] = f"cities/{city}/access_profile.jpg"
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability.jpg"
     template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density.jpg"
+    template["presence_rating"] = f"cities/{city}/policy_presence_rating.jpg"
+    template["quality_rating"] = f"cities/{city}/policy_checklist_rating.jpg"
     template["policy2_text1_response"] =policy_indicators[policy_checks['Presence'][0]]
     template["policy2_text2_response"] =policy_indicators[policy_checks['Presence'][1]]
     template["policy2_text3_response"] =policy_indicators[policy_checks['Presence'][2]]

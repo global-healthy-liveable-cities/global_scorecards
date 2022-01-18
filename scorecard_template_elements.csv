@@ -27,30 +27,32 @@ local_nh_population_density,2,I,10,208,98,288,,0,0,0,0,,FFFFFF,L,,2,FALSE
 health_header,2,T,106,13,210,16,dejavu,14,1,0,0,,FFFFFF,L,Health related urban policy,3,FALSE
 policy box 1,4,B,110,18,200,63,,0,1,0,0,,FFFFFF,L,,2,FALSE
 presence_text,2,T,106,21,199,24,dejavu,12,1,0,0,,FFFFFF,L,Policy presence,3,FALSE
-quality_text,2,T,106,38,199,41,dejavu,12,1,0,0,,FFFFFF,L,Policy quality ¹,3,FALSE
-quality_qualifier,2,T,106,54,199,58,dejavu,8,0,1,0,,FFFFFF,L,"¹ quality rating rewards specific, measurable policies aligned with consensus evidence on healthy cities",2,TRUE
-policy_box_2,2,B,105,68,208,143,,0,1,0,0,def2ff,def2ff,L,,2,FALSE
-policy_checklist,2,T,106,70,174,73,dejavu,12,1,0,0,,def2ff,L,Transport policy checklist,3,FALSE
-global_comparison_header,2,T,182,71,208,74,dejavu,8,0,0,0,,def2ff,C,25 City Comparison,2,TRUE
-table_hline_mid,2,L,105,78,208,78,,0,0,0,0,,eaf2ec,L,,4,FALSE
-policy2_text1,2,T,106,80,174,84,dejavu,8,0,0,0,,def2ff,L,Transport and planning combined in one government department?,3,TRUE
-policy2_text1_global,2,T,182,80,208,84,dejavu,8,0,0,0,,def2ff,C,28% (7/25),3,TRUE
-policy2_text1_response,2,T,176,80,180,86,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
-policy2_text2,2,T,106,91,174,95,dejavu,8,0,0,0,,def2ff,L,Metropolitan urban policy specifies health-focused actions?,3,TRUE
-policy2_text2_global,2,T,182,91,208,95,dejavu,8,0,0,0,,def2ff,C,64% (16/25) ,3,TRUE
-policy2_text2_response,2,T,176,91,180,97,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
-policy2_text3,2,T,106,102,174,106,dejavu,8,0,0,0,,def2ff,L,Metropolitan transport policy specifies health-focused actions?,3,TRUE
-policy2_text3_global,2,T,182,102,208,106,dejavu,8,0,0,0,,def2ff,C,92% (23/25) ,3,TRUE
-policy2_text3_response,2,T,176,102,180,108,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
-policy2_text4,2,T,106,113,174,117,dejavu,8,0,0,0,,def2ff,L,Health Impact Assessment incorporated into urban/transport policy or legislation?,3,TRUE
-policy2_text4_global,2,T,182,113,208,117,dejavu,8,0,0,0,,def2ff,C,16% (4/25) ,3,TRUE
-policy2_text4_response,2,T,176,113,180,119,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
-policy2_text5,2,T,106,124,174,128,dejavu,8,0,0,0,,def2ff,L,Information on government expenditure on infrastructure for different transport modes?,3,TRUE
-policy2_text5_global,2,T,182,124,208,128,dejavu,8,0,0,0,,def2ff,C,44% (10/25) ,3,TRUE
-policy2_text5_response,2,T,176,124,180,130,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
-policy2_text6,2,T,106,135,174,139,dejavu,8,0,0,0,,def2ff,L,Air pollution policies related to both transport and land use planning,3,TRUE
-policy2_text6_global,2,T,182,135,208,139,dejavu,8,0,0,0,,def2ff,C,????,3,TRUE
-policy2_text6_response,2,T,176,135,180,141,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+presence_rating,2,I,120,24,190,39,,0,0,0,0,,FFFFFF,L,,0,FALSE
+quality_text,2,T,106,40,199,43,dejavu,12,1,0,0,,FFFFFF,L,Policy quality ¹,3,FALSE
+quality_rating,2,I,120,41,190,56,,0,0,0,0,,FFFFFF,L,,0,FALSE
+quality_qualifier,2,T,106,56,199,59,dejavu,8,0,1,0,,FFFFFF,L,"¹ Policy quality rating rewards specific, measurable policies aligned with consensus evidence on healthy cities",2,TRUE
+policy_box_2,2,B,105,70,208,146,,0,1,0,0,def2ff,def2ff,L,,2,FALSE
+policy_checklist,2,T,106,72,174,75,dejavu,12,1,0,0,,def2ff,L,Transport policy checklist,3,FALSE
+global_comparison_header,2,T,182,73,208,76,dejavu,8,0,0,0,,def2ff,C,25 City Comparison,2,TRUE
+table_hline_mid,2,L,105,80,208,80,,0,0,0,0,,eaf2ec,L,,4,FALSE
+policy2_text1,2,T,106,82,174,86,dejavu,8,0,0,0,,def2ff,L,Transport and planning combined in one government department?,3,TRUE
+policy2_text1_global,2,T,182,82,208,86,dejavu,8,0,0,0,,def2ff,C,28% (7/25),3,TRUE
+policy2_text1_response,2,T,176,82,180,88,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+policy2_text2,2,T,106,93,174,97,dejavu,8,0,0,0,,def2ff,L,Metropolitan urban policy specifies health-focused actions?,3,TRUE
+policy2_text2_global,2,T,182,93,208,97,dejavu,8,0,0,0,,def2ff,C,64% (16/25) ,3,TRUE
+policy2_text2_response,2,T,176,93,180,99,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+policy2_text3,2,T,106,104,174,108,dejavu,8,0,0,0,,def2ff,L,Metropolitan transport policy specifies health-focused actions?,3,TRUE
+policy2_text3_global,2,T,182,104,208,108,dejavu,8,0,0,0,,def2ff,C,92% (23/25) ,3,TRUE
+policy2_text3_response,2,T,176,104,180,110,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+policy2_text4,2,T,106,115,174,119,dejavu,8,0,0,0,,def2ff,L,Health Impact Assessment incorporated into urban/transport policy or legislation?,3,TRUE
+policy2_text4_global,2,T,182,115,208,119,dejavu,8,0,0,0,,def2ff,C,16% (4/25) ,3,TRUE
+policy2_text4_response,2,T,176,115,180,121,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+policy2_text5,2,T,106,126,174,130,dejavu,8,0,0,0,,def2ff,L,Information on government expenditure on infrastructure for different transport modes?,3,TRUE
+policy2_text5_global,2,T,182,126,208,130,dejavu,8,0,0,0,,def2ff,C,44% (10/25) ,3,TRUE
+policy2_text5_response,2,T,176,126,180,132,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
+policy2_text6,2,T,106,137,174,141,dejavu,8,0,0,0,,def2ff,L,Air pollution policies related to both transport and land use planning,3,TRUE
+policy2_text6_global,2,T,182,137,208,141,dejavu,8,0,0,0,,def2ff,C,????,3,TRUE
+policy2_text6_response,2,T,176,137,180,143,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
 walkability_description,2,T,106,153,205,157,dejavu,8,0,1,0,,FFFFFF,L,"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.",2,TRUE
 policy_box_3_description,4,T,110,175,207,179,dejavu,8,0,0,0,,FFFFFF,L,,2,TRUE
 policy_box_3,2,B,105,200,208,288,,0,1,0,0,eaf2ec,eaf2ec,L,,0,FALSE

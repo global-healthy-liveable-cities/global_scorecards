@@ -106,6 +106,8 @@ if __name__ == '__main__':
             header=policy_lookup['parameters']['header'],
             nrows=policy_lookup['parameters']['nrows'],
             index_col=policy_lookup['parameters']['index_col'])
+        # store overall rating for this analysis
+        df_policy[f'{policy_analysis}_rating'] = df_policy[policy_analysis].loc[:,df_policy[policy_analysis].columns[-1]]
         # only retain relevant columns for this analysis
         df_policy[policy_analysis]=df_policy[policy_analysis][df_labels[df_labels['Display']==policy_analysis].index]
     
@@ -117,13 +119,31 @@ if __name__ == '__main__':
     for city in cities:
         print(city)
         year = 2020
+        city_policy={}
+        for policy_analysis in policy_lookup['analyses']:
+             city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
+             city_policy[f'{policy_analysis}_rating'] = df_policy[f'{policy_analysis}_rating'].loc[city]
+             city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
+        
         # Generate resources
         if generate_resources:
             scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,cmap)
         
-        city_policy={}
-        for policy_analysis in policy_lookup['analyses']:
-             city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
+        # Policy ratings
+        scorecard_functions.policy_rating(
+                  range = [0,24],
+                  score = city_policy['Presence_rating'],
+                  comparison = city_policy['Presence_global'],
+                  label = '\nPolicies identified',
+                  cmap=cmap,
+                  path=f"cities/{city}/policy_presence_rating.jpg")
+        scorecard_functions.policy_rating(
+                  range = [0,57],
+                  score = city_policy['Checklist_rating'],
+                  comparison = city_policy['Checklist_global'],
+                  label = '',
+                  cmap=cmap,
+                  path=f"cities/{city}/policy_checklist_rating.jpg")
         
         #Generate PDF reports for cities
         pages = scorecard_functions.pdf_template_setup('scorecard_template_elements.csv')

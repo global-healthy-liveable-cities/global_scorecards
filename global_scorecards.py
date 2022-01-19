@@ -11,7 +11,7 @@ import scorecard_functions
 
 cmap = batlow_map
 
-generate_resources = True
+generate_resources = False
 
 if __name__ == '__main__':
     # load city parameters

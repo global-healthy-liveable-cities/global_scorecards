@@ -5,7 +5,7 @@ title_series,1,T,80,128,203,134,dejavu,12,1,0,0,,FFFFFF,R, Urban Policy and Buil
 hero_image,1,I,0,161,210,261,,0,0,0,0,,FFFFFF,L,,2,FALSE,0
 hero_alt,1,T,80,211,210,215,dejavu,12,0,1,0,,FFFFFF,L,,2,TRUE,0
 cover_image,1,I,0,0,211,298,,0,0,0,0,,FFFFFF,L,,3,FALSE,0
-infographic,2,T,0,100,297,103,dejavu,12,0,1,0,,FFFFFF,C,Infographic to be inserted here…,2,TRUE,45
+infographic,2,T,90,120,200,203,dejavu,12,0,1,0,,FFFFFF,C,Infographic to be inserted here…,2,TRUE,45
 urban_header,3,T,12,13,94,16,dejavu,14,1,0,0,,FFFFFF,L,Urban design and transport features,3,FALSE,0
 access_profile,3,I,15,18,95,98,,0,0,0,0,,FFFFFF,L,,2,FALSE,0
 access_profile_text,3,T,13,98,103,102,dejavu,8,0,1,0,,FFFFFF,L,(above) City estimates for percentage of population with access to amenities within 500 metres (m) can be compared with the performance of other cities in our global study.,3,TRUE,0

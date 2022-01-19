@@ -3,17 +3,6 @@
 ##    pip install descartes fpdf2
 import os
 import pandas as pd
-import geopandas as gpd
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.cm import ScalarMappable
-from matplotlib.lines import Line2D
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import matplotlib.font_manager as fm
-import matplotlib.ticker as ticker
 from textwrap import wrap
 from batlow import batlow_map
 import json
@@ -23,7 +12,7 @@ import scorecard_functions
 
 cmap = batlow_map
 
-generate_resources = False
+generate_resources = True
 
 if __name__ == '__main__':
     # load city parameters
@@ -119,31 +108,39 @@ if __name__ == '__main__':
             df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    cities = ['Bangkok','Hanoi','Melbourne','Mexico City']
+    #cities = ['Bangkok','Hanoi','Melbourne','Mexico City']
+    cities = df_policy['Presence'].index
     # 'Olomouc' is a problem...
+    successful = 0
     for city in cities:
         print(city)
-        year = 2020
-        city_policy={}
-        for policy_analysis in policy_lookup['analyses']:
-            city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
-            if policy_analysis in ['Presence','Checklist']:
-                city_policy[f'{policy_analysis}_rating'] = df_policy[f'{policy_analysis}_rating'].loc[city]
-                city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
-        
-        # Generate resources
-        if generate_resources:
-            scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,cmap)
-        
-        #Generate PDF reports for cities
-        pages = scorecard_functions.pdf_template_setup('scorecard_template_elements.csv')
-        
-        # instantiate template
-        
-        scorecard_functions.generate_scorecard(
-            city,
-            pages,
-            title = f"{city} Global Liveability Indicators Scorecard - {year}",
-            author = 'Global Healthy Liveable City Indicators Collaboaration Study',
-            policy_checks = city_policy
-            )
+        try:
+            year = 2020
+            city_policy={}
+            for policy_analysis in policy_lookup['analyses']:
+                city_policy[policy_analysis] = df_policy[policy_analysis].loc[city]
+                if policy_analysis in ['Presence','Checklist']:
+                    city_policy[f'{policy_analysis}_rating'] = df_policy[f'{policy_analysis}_rating'].loc[city]
+                    city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
+            
+            # Generate resources
+            if generate_resources:
+                scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,cmap)
+            
+            #Generate PDF reports for cities
+            pages = scorecard_functions.pdf_template_setup('scorecard_template_elements.csv')
+            
+            # instantiate template
+            
+            scorecard_functions.generate_scorecard(
+                city,
+                pages,
+                title = f"{city} Global Liveability Indicators Scorecard - {year}",
+                author = 'Global Healthy Liveable City Indicators Collaboaration Study',
+                policy_checks = city_policy
+                )
+            successful+=1
+        except Exception as e:
+            print(f"\t- Scorecard generation failed with error: {e}")
+    
+    print(f"\n {successful}/{len(cities)} cities processed successfully!")

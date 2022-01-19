@@ -39,7 +39,7 @@ policy2_text5,3,T,106,126,174,130,dejavu,8,0,0,0,,def2ff,L,Information on govern
 policy2_text5_global,3,T,182,126,208,130,dejavu,8,0,0,0,,def2ff,C,44% (10/25) ,3,TRUE
 policy2_text5_response,3,T,176,126,180,132,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
 policy2_text6,3,T,106,137,174,141,dejavu,8,0,0,0,,def2ff,L,Air pollution policies related to both transport and land use planning,3,TRUE
-policy2_text6_global,3,T,182,137,208,141,dejavu,8,0,0,0,,def2ff,C,????,3,TRUE
+policy2_text6_global,3,T,182,137,208,141,dejavu,8,0,0,0,,def2ff,C,68% (17/25),3,TRUE
 policy2_text6_response,3,T,176,137,180,143,dejavu,15,1,0,0,,def2ff,L,,2,FALSE
 walkability_description,3,T,106,149,205,153,dejavu,8,0,1,0,,FFFFFF,L,"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity.  Sufficient density of dwellings and population is critical for walkability, because it determines the viability of local destinations and adequate public transport service.",2,TRUE
 policy_box_3,3,B,105,200,208,288,,0,1,0,0,eaf2ec,eaf2ec,L,,0,FALSE

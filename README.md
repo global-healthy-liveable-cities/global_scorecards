@@ -1,6 +1,6 @@
 # Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study
 
-The code in this repository draws on results from the Global Healthy and Sustainable Cities Indicator Collaboration Study to generate policy 'scorecard' reports.
+The code in this repository draws on results from the [Global Healthy and Sustainable Cities Indicator Collaboration Study](https://github.com/global-healthy-liveable-cities/global-indicators) to generate policy 'scorecard' reports.
 
 The respository is ideally located as a subfolder of the study's spatial components repository, located within the [analysis](https://github.com/global-healthy-liveable-cities/global-indicators/tree/main/analysis) folder.
 

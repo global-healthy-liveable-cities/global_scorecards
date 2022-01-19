@@ -1,0 +1,10 @@
+archive
+__pycache__
+cities/*
+data/*
+fonts/*
+hero_images/*
+logos/*
+*.pdf
+*.xlsx
+*.pkl

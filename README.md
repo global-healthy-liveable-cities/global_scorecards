@@ -21,7 +21,7 @@ With the required modules installed and data resources available relative to the
 python global_scorecards.py
 ```
 
-This code identifies required data sources, and extracts key information which is passed to functions in scorecard_functions.py to generate resources, format pages, and output the final PDF layout.
+This code identifies required data sources, and extracts key information which is passed to functions in scorecard_functions.py to generate resources, format pages, and output the final PDF layout, according to the locations and pages specified in the scorecard_template_elements.csv file.
 
 Carl Higgs
 carl.higgs@rmit.edu.au

@@ -31,11 +31,11 @@ if __name__ == '__main__':
       city_data = json.load(f)
     
     # Identify data sources
-    gpkg_cities = os.path.abspath('../../process/data/output/global_indicators_city_2021-06-21.gpkg')
     gpkg_hexes = os.path.abspath('../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg')
     csv_city_indicators = os.path.abspath("../../process/data/output/global_indicators_city_2021-06-21.csv")
     csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
     csv_thresholds_data = os.path.abspath("../Global Indicators 2020 - thresholds summary estimates.csv")
+    xlsx_policy_data = 'data/Policy Figures 1 & 2_23 Dec_numerical.xlsx'
     
     # Set up main city indicators
     df = pd.read_csv(csv_city_indicators)
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     # Retrieve and parse policy analysis data
     policy_lookup = {
-        'worksheet':'data/Policy Figures 1 & 2_23 Dec_numerical.xlsx',
+        'worksheet':xlsx_policy_data,
         'analyses': {
             'Presence':{'sheet_name':'Figure 1 - transposed evaluated'},
             'Checklist':{'sheet_name':'Figure 2 - Tuples'},

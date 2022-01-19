@@ -28,7 +28,8 @@ def fpdf2_mm_scale(mm):
 def li_profile(city_stats, comparisons,title,cmap,path, width = fpdf2_mm_scale(80), height = fpdf2_mm_scale(80), dpi = 300):
     """
     Generates a radar chart for city liveability profiles
-    Drawing on https://www.python-graph-gallery.com/web-circular-barplot-with-matplotlib
+    Expanding on https://www.python-graph-gallery.com/web-circular-barplot-with-matplotlib
+    -- A python code blog post by Yan Holtz, in turn expanding on work of Tomás Capretto and Tobias Stadler.
     
     Arguments:
         city_stats  A pandas series of indicators for a particular city
@@ -208,6 +209,9 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
     plt.close(fig) 
 
 def setup_thresholds(csv_thresholds_data,threshold_lookup):
+    """
+    A help script for identifying lower and upper bound thresholds associated with specific policy scenarios
+    """
     thresholds = pd.read_csv(csv_thresholds_data)
     cities = thresholds.columns[1:]
     # Threshold analysis
@@ -238,6 +242,10 @@ def policy_rating(range,
                   label = 'Policies identified',
                   path='policy_rating_test.jpg',
                   dpi = 300):
+    """
+    Plot a score (policy rating) and optional comparison (e.g. 25 cities median score) on 
+    a colour bar.  Applied in this context for policy presence and policy quality scores.
+    """
     textsize = 14
     fig, ax = plt.subplots(figsize=(width, height))
     fig.subplots_adjust(bottom=0)
@@ -403,6 +411,11 @@ def pdf_template_setup(csv_template_path):
     return pages
 
 def generate_scorecard(city,pages,title,author,policy_checks):
+    """
+    Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
+    
+    Included in this function is the marking of a policy 'scorecard', with ticks, crosses, etc.
+    """
     policy_indicators = {0:u'✗',0.5:'~',1:u'✓'}
     pdf = FPDF(orientation="portrait", format="A4")
     if debug == True:

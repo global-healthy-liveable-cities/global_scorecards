@@ -21,7 +21,10 @@ With the required modules installed and data resources available relative to the
 python global_scorecards.py
 ```
 
-This code identifies required data sources, and extracts key information which is passed to functions in scorecard_functions.py to generate resources, format pages, and output the final PDF layout, according to the locations and pages specified in the scorecard_template_elements.csv file.
+This code identifies required data sources, and extracts key information which is passed to functions in scorecard_functions.py to generate resources, format pages, and output the final PDF layout, according to the locations and pages specified in the scorecard_template_elements.csv file [^1].   
 
 Carl Higgs
 carl.higgs@rmit.edu.au
+
+
+[^1]: The scorecard_template_elements.csv file is actually saved from the scorecard_template_elements.xlsx file which I used for editing, using relative formulas for element placement.  This makes it easier to quickly move entire blocks of content around the page when fine-tuning the template.  However, CSVs are a more stable file format, so to maintain simpler code it was decided to use UTF-8 formatted CSV, which supports special characters.

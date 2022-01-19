@@ -107,9 +107,7 @@ if __name__ == '__main__':
             df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    #cities = ['Bangkok','Hanoi','Melbourne','Mexico City']
     cities = df_policy['Presence'].index
-    # 'Olomouc' is a problem...
     successful = 0
     for city in cities:
         print(city)
@@ -136,7 +134,7 @@ if __name__ == '__main__':
                 pages,
                 title = f"{city} Global Liveability Indicators Scorecard - {year}",
                 author = 'Global Healthy Liveable City Indicators Collaboaration Study',
-                policy_checks = city_policy
+                city_policy = city_policy
                 )
             successful+=1
         except Exception as e:

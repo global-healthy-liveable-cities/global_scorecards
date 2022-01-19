@@ -131,8 +131,14 @@ def spatial_dist_map(gdf,
                          'orientation':'horizontal'},
             cax=cax,
             cmap = cmap)
+    gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
+    # cities vary in scale, but in general
+    # a scalebar no bigger than 1/3 of the city is ideally
+    # so is rounding to nearest thousand (ie. units of km)
+    # and I think the following expression meets these goals
+    scalebar_length = int(gdf_width/(3000))
     scalebar = AnchoredSizeBar(ax.transData,
-                               20000, '20 km', 'upper left', 
+                               scalebar_length*1000, f'{scalebar_length} km', 'upper left', 
                                pad=0,
                                color='black',
                                frameon=False,
@@ -177,8 +183,14 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
             cmap=cmap,
             #norm = mpl.colors.LogNorm(vmin=1, vmax=range[1])
             )
+    gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
+    # cities vary in scale, but in general
+    # a scalebar no bigger than 1/3 of the city is ideally
+    # so is rounding to nearest thousand (ie. units of km)
+    # and I think the following expression meets these goals
+    scalebar_length = int(gdf_width/(3000))
     scalebar = AnchoredSizeBar(ax.transData,
-                               20000, '20 km', 'upper left', 
+                               scalebar_length*1000, f'{scalebar_length} km', 'upper left', 
                                pad=0,
                                color='black',
                                frameon=False,
@@ -321,7 +333,7 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
                    'with service frequency of 20 minutes or less '
                    f'({round(df.loc[city,"Public transport with regular service"],1)}%)'),
          'tick_labels': None,
-         'outfile': f'{city_path}/pct_access_500m_pt_gtfs_freq_20_score.jpg'},
+         'outfile': f'{city_path}/pct_access_500m_pt.jpg'},
         {'column' :'pct_access_500m_public_open_space_large_score', 
          'range'    : [0,100],
          'label'  :('Percentage of population with access to public open\n'
@@ -330,6 +342,12 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
          'tick_labels': None,
          'outfile': f'{city_path}/pct_access_500m_public_open_space_large_score.jpg'},
     ]
+    
+    if 'pct_access_500m_pt_gtfs_freq_20_score' not in gdf.describe().transpose().index:
+        spatial_distribution_figures[1]['column'] = 'pct_access_500m_pt_any_score'
+        spatial_distribution_figures[1]['label'] = ('Percentage of population with access to public transport\n'
+                   f'({round(df.loc[city,"Public transport stop"],1)}%)')
+    
     for f in spatial_distribution_figures:
         spatial_dist_map(gdf,
                      column=f['column'], 
@@ -410,7 +428,7 @@ def pdf_template_setup(csv_template_path):
         pages[f'{page}'] = [x for x in elements if x['page']==page]
     return pages
 
-def generate_scorecard(city,pages,title,author,policy_checks):
+def generate_scorecard(city,pages,title,author,city_policy):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
     
@@ -449,20 +467,20 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density.jpg"
     template["presence_rating"] = f"cities/{city}/policy_presence_rating.jpg"
     template["quality_rating"] = f"cities/{city}/policy_checklist_rating.jpg"
-    template["policy2_text1_response"] =policy_indicators[policy_checks['Presence'][0]]
-    template["policy2_text2_response"] =policy_indicators[policy_checks['Presence'][1]]
-    template["policy2_text3_response"] =policy_indicators[policy_checks['Presence'][2]]
-    template["policy2_text4_response"] =policy_indicators[policy_checks['Presence'][3]]
-    template["policy2_text5_response"] =policy_indicators[policy_checks['Presence'][4]]
+    template["policy2_text1_response"] =policy_indicators[city_policy['Presence'][0]]
+    template["policy2_text2_response"] =policy_indicators[city_policy['Presence'][1]]
+    template["policy2_text3_response"] =policy_indicators[city_policy['Presence'][2]]
+    template["policy2_text4_response"] =policy_indicators[city_policy['Presence'][3]]
+    template["policy2_text5_response"] =policy_indicators[city_policy['Presence'][4]]
     # Air pollution is a check of two policies met...
-    template["policy2_text6_response"] =policy_indicators[(policy_checks['Presence'][5]+policy_checks['Presence'][6])/2].replace('~','½')
+    template["policy2_text6_response"] =policy_indicators[(city_policy['Presence'][5]+city_policy['Presence'][6])/2].replace('~','½')
     ## Walkable neighbourhood policy checklist
     template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity. Sufficient density of dwellings and population is critical for walkability, because it determines the viability of local destinations and adequate public transport service.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
     
     for analysis in ['Checklist']:
-        for i,policy in enumerate(policy_checks[analysis].index):
+        for i,policy in enumerate(city_policy[analysis].index):
             row = i+1
-            for j,item in enumerate([x for x in policy_checks[analysis][i][0]]):
+            for j,item in enumerate([x for x in city_policy[analysis][i][0]]):
                 col = j+1
                 template[f'policy_{analysis}_text{row}_response{col}'] = item
     
@@ -472,13 +490,13 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['4'])
     template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density.jpg"
-    template["pct_access_500m_pt_gtfs_freq_20_score"] = f"cities/{city}/pct_access_500m_pt_gtfs_freq_20_score.jpg"
+    template["pct_access_500m_pt.jpg"] = f"cities/{city}/pct_access_500m_pt.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score.jpg"
     
     for analysis in ['PT','POS']:
-        for i,policy in enumerate(policy_checks[analysis].index):
+        for i,policy in enumerate(city_policy[analysis].index):
             row = i+1
-            for j,item in enumerate([x for x in policy_checks[analysis][i][0]]):
+            for j,item in enumerate([x for x in city_policy[analysis][i][0]]):
                 col = j+1
                 template[f'policy_{analysis}_text{row}_response{col}'] = item
     

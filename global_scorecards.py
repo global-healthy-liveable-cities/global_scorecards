@@ -34,8 +34,8 @@ if __name__ == '__main__':
     gpkg_hexes = os.path.abspath('../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg')
     csv_city_indicators = os.path.abspath("../../process/data/output/global_indicators_city_2021-06-21.csv")
     csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
-    csv_thresholds_data = os.path.abspath("../Global Indicators 2020 - thresholds summary estimates.csv")
-    xlsx_policy_data = 'data/Policy Figures 1 & 2_23 Dec_numerical.xlsx'
+    csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
+    xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
     
     # Set up main city indicators
     df = pd.read_csv(csv_city_indicators)

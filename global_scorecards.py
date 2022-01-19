@@ -3,7 +3,6 @@
 ##    pip install descartes fpdf2
 import os
 import pandas as pd
-from textwrap import wrap
 from batlow import batlow_map
 import json
 

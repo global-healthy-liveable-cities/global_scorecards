@@ -498,7 +498,7 @@ def generate_scorecard(city,pages,title,author,policy_checks):
     template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
     template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
     template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
-    template["suggested_citation"] = f'Citation: Global Healthy & Sustainable Cities Indicators Collaboration. 2022. Urban Policy and Built Environment Scorecard 2020: Bangkok. https://doi.org/INSERT-DOI-HERE'
+    template["suggested_citation"] = f'Citation: Global Healthy & Sustainable Cities Indicators Collaboration. 2022. Urban Policy and Built Environment Scorecard 2020: {city}. https://doi.org/INSERT-DOI-HERE'
     
     template.render()
     

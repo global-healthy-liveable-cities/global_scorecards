@@ -6,10 +6,10 @@ import pandas as pd
 from batlow import batlow_map
 import json
 import argparse
-
+import matplotlib.font_manager as fm
 # import and set up functions
 import scorecard_functions
-
+import matplotlib.pyplot as plt
 # Set up commandline input parsing
 
 
@@ -25,10 +25,11 @@ parser.add_argument("--cities", default="Vic,Mexico City",
 parser.add_argument('--generate_resources', action='store_true',default=False,
     help='Generate images from input data for each city? Default is False.')
 
-parser.add_argument('--language', default="None", type=str,
+parser.add_argument('--language', default="Spanish", type=str,
     help='The desired language for presentation, as defined in the template workbook languages sheet.')
 
 config = parser.parse_args()
+language = config.language
 cmap = batlow_map
 
 if __name__ == '__main__':
@@ -43,6 +44,12 @@ if __name__ == '__main__':
     csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
     xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
     xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
+    # set up fonts
+    fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
+    fonts = fonts.loc[fonts['Language']==language].fillna('')
+    fm.fontManager.addfont(fonts.File.values[0])
+    plt.rcParams['font.family'] = os.path.basename(fonts.File.values[0]).split('.')[0]
+    font = fonts.Font.values[0]
     # Set up main city indicators
     df = pd.read_csv(csv_city_indicators)
     df.set_index('City',inplace=True)
@@ -142,11 +149,10 @@ if __name__ == '__main__':
             
             # Generate resources
             if config.generate_resources:
-                scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,
-                    threshold_scenarios,city_policy,cmap)
+                scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,xlsx_scorecard_template,language,cmap)
             
             #Generate PDF reports for cities
-            pages = scorecard_functions.pdf_template_setup(xlsx_scorecard_template)
+            pages = scorecard_functions.pdf_template_setup(xlsx_scorecard_template,font=font)
             
             # instantiate template
             
@@ -157,7 +163,7 @@ if __name__ == '__main__':
                 author = 'Global Healthy Liveable City Indicators Collaboaration Study',
                 city_policy = city_policy,
                 xlsx_scorecard_template = xlsx_scorecard_template,
-                language = config.language
+                language = language
                 )
             successful+=1
         except Exception as e:

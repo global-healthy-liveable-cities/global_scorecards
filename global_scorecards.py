@@ -11,18 +11,25 @@ import argparse
 import scorecard_functions
 
 # Set up commandline input parsing
-parser = argparse.ArgumentParser(description='Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study')
 
-parser.add_argument("--cities", nargs="+", default=["Vic"],
-    help='A list of cities, for example: Baltimore Phoenix Seattle Adelaide Melbourne Sydney Auckland Bern Odense Graz Cologne Ghent Belfast Barcelona Valencia Vic Lisbon Olomouc Hong Kong Mexico City Sao Paulo Bangkok Hanoi Maiduguri Chennai')
+
+parser = argparse.ArgumentParser(
+    description='Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study'
+    )
+
+parser.add_argument("--cities", default="Vic,Mexico City",
+    help=('A list of cities, for example: Baltimore, Phoenix, Seattle, Adelaide, Melbourne, '
+          'Sydney, Auckland, Bern, Odense, Graz, Cologne, Ghent, Belfast, Barcelona, Valencia, Vic, '
+          'Lisbon, Olomouc, Hong, Kong, Mexico City, Sao, Paulo, Bangkok, Hanoi, Maiduguri, Chennai'))
+
 parser.add_argument('--generate_resources', action='store_true',default=False,
     help='Generate images from input data for each city? Default is False.')
 
+parser.add_argument('--language', default="None", type=str,
+    help='The desired language for presentation, as defined in the template workbook languages sheet.')
+
 config = parser.parse_args()
-
 cmap = batlow_map
-
-generate_resources = config.generate_resources
 
 if __name__ == '__main__':
     # load city parameters
@@ -35,7 +42,7 @@ if __name__ == '__main__':
     csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
     csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
     xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
-    
+    xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
     # Set up main city indicators
     df = pd.read_csv(csv_city_indicators)
     df.set_index('City',inplace=True)
@@ -68,7 +75,8 @@ if __name__ == '__main__':
     df_extrema = pd.read_csv(csv_hex_indicators)
     df_extrema.set_index('City',inplace=True) 
     for k in threshold_lookup:
-        threshold_lookup[k]['range'] = df_extrema[threshold_lookup[k]['field']].describe()[['min','max']].astype(int).values
+        threshold_lookup[k]['range'] = df_extrema[threshold_lookup[k]['field']].describe()[['min','max']]\
+            .astype(int).values
     
     threshold_scenarios = scorecard_functions.setup_thresholds(csv_thresholds_data,threshold_lookup)
     
@@ -95,7 +103,8 @@ if __name__ == '__main__':
         'column_formatting':'Policies of interest'
     }
     
-    df_labels = pd.read_excel(policy_lookup['worksheet'],sheet_name = policy_lookup['column_formatting'],index_col=0)
+    df_labels = pd.read_excel(policy_lookup['worksheet'],sheet_name = policy_lookup['column_formatting'],
+                              index_col=0)
     df_labels = df_labels[~df_labels['Display'].isna()]
     
     df_policy = {}
@@ -118,8 +127,7 @@ if __name__ == '__main__':
             df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    #cities = df_policy['Presence'].index
-    cities = config.cities
+    cities = [x.strip() for x in config.cities.split(',')]
     successful = 0
     for city in cities:
         print(city)
@@ -133,11 +141,12 @@ if __name__ == '__main__':
                     city_policy[f'{policy_analysis}_global'] = df_policy[f'{policy_analysis}_rating'].describe()
             
             # Generate resources
-            if generate_resources:
-                scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scenarios,city_policy,cmap)
+            if config.generate_resources:
+                scorecard_functions.generate_resources(city,gpkg_hexes,df,indicators,comparisons,
+                    threshold_scenarios,city_policy,cmap)
             
             #Generate PDF reports for cities
-            pages = scorecard_functions.pdf_template_setup('scorecard_template_elements.csv')
+            pages = scorecard_functions.pdf_template_setup(xlsx_scorecard_template)
             
             # instantiate template
             
@@ -146,7 +155,9 @@ if __name__ == '__main__':
                 pages,
                 title = f"{city} Global Liveability Indicators Scorecard - {year}",
                 author = 'Global Healthy Liveable City Indicators Collaboaration Study',
-                city_policy = city_policy
+                city_policy = city_policy,
+                xlsx_scorecard_template = xlsx_scorecard_template,
+                language = config.language
                 )
             successful+=1
         except Exception as e:

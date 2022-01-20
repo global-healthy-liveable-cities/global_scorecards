@@ -383,9 +383,9 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
     return(city_path)
 
 
-def pdf_template_setup(csv_template_path):
+def pdf_template_setup(template,template_sheet = 'scorecard_template_elements'):
     """
-    Takes a CSV file defining elements for use in fpdf2's FlexTemplate function.
+    Takes a template xlsx sheet defining elements for use in fpdf2's FlexTemplate function.
     This is loosely based on the specification at https://pyfpdf.github.io/fpdf2/Templates.html
     However, it has been modified to allow additional definitions which are parsed
     by this function
@@ -396,9 +396,7 @@ def pdf_template_setup(csv_template_path):
     The function returns a dictionary of elements, indexed by page number strings.
     """
     # read in elements
-    ## NOTE!! It is assumed that CSV has been saved using UTF8 encoding
-    ## This allows special characters which may be required.
-    elements = pd.read_csv(csv_template_path,encoding = "utf-8")
+    elements = pd.read_excel(template,sheet_name = template_sheet)
     document_pages = elements.page.unique()
     elements = elements.to_dict(orient='records')
     elements = [{k:v if not str(v)=='nan' else None for k,v in x.items()} for x in elements]
@@ -424,29 +422,53 @@ def pdf_template_setup(csv_template_path):
         pages[f'{page}'] = [x for x in elements if x['page']==page]
     return pages
 
-def generate_scorecard(city,pages,title,author,city_policy):
+def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_template, language = None, 
+    template_sheet = 'scorecard_template_elements', language_sheet = 'languages'):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
     
     Included in this function is the marking of a policy 'scorecard', with ticks, crosses, etc.
     """
+    # replace placeholder language with specific language, if specified
+    if not os.path.exists('scorecards'):
+        os.mkdir('scorecards')
+    
+    if language != 'None':
+        template = pd.read_excel(xlsx_scorecard_template,sheet_name = template_sheet)
+        languages = pd.read_excel(xlsx_scorecard_template,sheet_name = language_sheet)
+        for p in pages:
+            for i,item in enumerate(pages[p]):
+                if item['name'] in languages.name.values:
+                    pages[p][i]['text']
+                    pages[p][i]['text'] = languages.loc[languages['name']==item['name'],
+                                                        language].values[0].format(city=city)
+        scorecard_path = f'scorecards/{language}'
+        if not os.path.exists(scorecard_path):
+            os.mkdir(scorecard_path)
+    else:
+        scorecard_path = f'scorecards'
+    
     policy_indicators = {0:u'✗',0.5:'~',1:u'✓'}
     pdf = FPDF(orientation="portrait", format="A4")
     pdf.set_title(title)
     pdf.set_author(author)
     pdf.set_auto_page_break(False)
-    pdf.add_font('dejavu',style='', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed.ttf', uni=True)
-    pdf.add_font('dejavu',style='B', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Bold.ttf', uni=True)
-    pdf.add_font('dejavu',style='I', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Oblique.ttf', uni=True)
-    pdf.add_font('dejavu',style='BI', fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-BoldOblique.ttf', uni=True)
+    pdf.add_font('dejavu',style='', 
+        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed.ttf', uni=True)
+    pdf.add_font('dejavu',style='B', 
+        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Bold.ttf', uni=True)
+    pdf.add_font('dejavu',style='I', 
+        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Oblique.ttf', uni=True)
+    pdf.add_font('dejavu',style='BI', 
+        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-BoldOblique.ttf', uni=True)
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
     template["title_city"] = f"{city}"
-    if not os.path.exists(f"hero_images/{city}.jpg"):
-        template["hero_alt"]="Please provide a high resolution 'hero image' for this city, ideally with dimensions in the ratio of 21:10 (e.g. 2100px by 1000px)"
-    else:
+    if os.path.exists(f"hero_images/{city}.jpg"):
         template["hero_image"] = f"hero_images/{city}.jpg"
+        template["hero_alt"]=""
+    
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template.render()
     # Set up next page
@@ -469,7 +491,7 @@ def generate_scorecard(city,pages,title,author,city_policy):
     # Air pollution is a check of two policies met...
     template["policy2_text6_response"] =policy_indicators[(city_policy['Presence'][5]+city_policy['Presence'][6])/2].replace('~','½')
     ## Walkable neighbourhood policy checklist
-    template["walkability_description"] =f"Walkable neighbourhoods underpin a liveable city, providing opportunities for healthy sustainable lifestyles.  Walkability encompasses accessibility of services and amenities and is influenced by policies determining land use mix and population density, as well as street connectivity. Sufficient density of dwellings and population is critical for walkability, because it determines the viability of local destinations and adequate public transport service.\n\nThe below checklist reports on an analysis of {city} urban policies supporting walkable neighbourhoods, evaluating: policy presence; whether the policy had a specific aim or standard; whether it had a measurable target; and whether it was consistent with evidence on health supportive environments."
+    #template["walkability_description"] = languag
     
     for analysis in ['Checklist']:
         for i,policy in enumerate(city_policy[analysis].index):
@@ -510,12 +532,9 @@ def generate_scorecard(city,pages,title,author,city_policy):
     template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
     template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
     template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
-    template["suggested_citation"] = f'Citation: Global Healthy & Sustainable Cities Indicators Collaboration. 2022. Urban Policy and Built Environment Scorecard 2020: {city}. https://doi.org/INSERT-DOI-HERE'
     
     template.render()
     
     # Output scorecard pdf
-    if not os.path.exists('scorecards'):
-        os.mkdir('scorecards')
-    pdf.output(f"scorecards/scorecard_{city}.pdf")
-    return f"Scorecard generated: scorecard_{city}.pdf"
+    pdf.output(f"{scorecard_path}/scorecard_{city}.pdf")
+    return f"Scorecard generated: {scorecard_path}/scorecard_{city}.pdf"

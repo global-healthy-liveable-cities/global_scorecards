@@ -15,14 +15,10 @@ import matplotlib.ticker as ticker
 from textwrap import wrap
 from fpdf import FPDF, FlexTemplate
 
-# switch to low res for quick prototyping
-debug = False
-
 def fpdf2_mm_scale(mm):
     # returns a width double that of the conversion of mm to inches
     # because that seems to work about right, based on trial and error
     return(2*mm/25.4)
-
 
 ## radar chart
 def li_profile(city_stats, comparisons,title,cmap,path, width = fpdf2_mm_scale(80), height = fpdf2_mm_scale(80), dpi = 300):
@@ -436,8 +432,6 @@ def generate_scorecard(city,pages,title,author,city_policy):
     """
     policy_indicators = {0:u'✗',0.5:'~',1:u'✓'}
     pdf = FPDF(orientation="portrait", format="A4")
-    if debug == True:
-        pdf.set_image_filter("DCTDecode")
     pdf.set_title(title)
     pdf.set_author(author)
     pdf.set_auto_page_break(False)
@@ -521,7 +515,7 @@ def generate_scorecard(city,pages,title,author,city_policy):
     template.render()
     
     # Output scorecard pdf
-    if debug == True:
-        pdf.oversized_images = "DOWNSCALE"
-    pdf.output(f"scorecard_{city}.pdf")
+    if not os.path.exists('scorecards'):
+        os.mkdir('scorecards')
+    pdf.output(f"scorecards/scorecard_{city}.pdf")
     return f"Scorecard generated: scorecard_{city}.pdf"

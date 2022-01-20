@@ -5,13 +5,24 @@ import os
 import pandas as pd
 from batlow import batlow_map
 import json
+import argparse
 
 # import and set up functions
 import scorecard_functions
 
+# Set up commandline input parsing
+parser = argparse.ArgumentParser(description='Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study')
+
+parser.add_argument("--cities", nargs="+", default=["Vic"],
+    help='A list of cities, for example: Baltimore Phoenix Seattle Adelaide Melbourne Sydney Auckland Bern Odense Graz Cologne Ghent Belfast Barcelona Valencia Vic Lisbon Olomouc Hong Kong Mexico City Sao Paulo Bangkok Hanoi Maiduguri Chennai')
+parser.add_argument('--generate_resources', action='store_true',default=False,
+    help='Generate images from input data for each city? Default is False.')
+
+config = parser.parse_args()
+
 cmap = batlow_map
 
-generate_resources = False
+generate_resources = config.generate_resources
 
 if __name__ == '__main__':
     # load city parameters
@@ -107,7 +118,8 @@ if __name__ == '__main__':
             df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    cities = df_policy['Presence'].index
+    #cities = df_policy['Presence'].index
+    cities = config.cities
     successful = 0
     for city in cities:
         print(city)

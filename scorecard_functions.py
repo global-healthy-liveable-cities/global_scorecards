@@ -422,8 +422,8 @@ def pdf_template_setup(template,template_sheet = 'scorecard_template_elements'):
         pages[f'{page}'] = [x for x in elements if x['page']==page]
     return pages
 
-def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_template, language = None, 
-    template_sheet = 'scorecard_template_elements', language_sheet = 'languages'):
+def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_template, language = 'English', 
+    template_sheet = 'scorecard_template_elements'):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
     
@@ -433,9 +433,8 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     if not os.path.exists('scorecards'):
         os.mkdir('scorecards')
     
-    if language != 'None':
-        template = pd.read_excel(xlsx_scorecard_template,sheet_name = template_sheet)
-        languages = pd.read_excel(xlsx_scorecard_template,sheet_name = language_sheet)
+    if language != 'English':
+        languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
         for p in pages:
             for i,item in enumerate(pages[p]):
                 if item['name'] in languages.name.values:
@@ -450,17 +449,20 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     
     policy_indicators = {0:u'✗',0.5:'~',1:u'✓'}
     pdf = FPDF(orientation="portrait", format="A4")
+    
+    fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
+    fonts = fonts.loc[fonts['Language']==language].fillna('')
+    for s in ['','B','I','BI']:
+        f = fonts.loc[fonts['Style']==s]
+        pdf.add_font(f.Font.values[0],
+                     style=s,
+                     fname=f.File.values[0], 
+                     uni=True)
+    
     pdf.set_title(title)
     pdf.set_author(author)
     pdf.set_auto_page_break(False)
-    pdf.add_font('dejavu',style='', 
-        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed.ttf', uni=True)
-    pdf.add_font('dejavu',style='B', 
-        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Bold.ttf', uni=True)
-    pdf.add_font('dejavu',style='I', 
-        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-Oblique.ttf', uni=True)
-    pdf.add_font('dejavu',style='BI', 
-        fname='fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansCondensed-BoldOblique.ttf', uni=True)
+    
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])

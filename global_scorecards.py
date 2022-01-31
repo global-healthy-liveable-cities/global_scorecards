@@ -48,7 +48,9 @@ if __name__ == '__main__':
     fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
     fonts = fonts.loc[fonts['Language']==language].fillna('')
     fm.fontManager.addfont(fonts.File.values[0])
-    plt.rcParams['font.family'] = os.path.basename(fonts.File.values[0]).split('.')[0]
+    prop = fm.FontProperties(fname=fonts.File.values[0])
+    fm.findfont(prop=prop,directory=fonts.File.values[0], rebuild_if_missing=True)
+    plt.rcParams['font.family'] = prop.get_name()
     font = fonts.Font.values[0]
     # Set up main city indicators
     df = pd.read_csv(csv_city_indicators)
@@ -101,7 +103,7 @@ if __name__ == '__main__':
     policy_lookup = {
         'worksheet':xlsx_policy_data,
         'analyses': {
-            'Presence':{'sheet_name':'Figure 1 - transposed evaluated'},
+            'Presence':{'sheet_name':'Figure 1 - transposed rounded'},
             'Checklist':{'sheet_name':'Figure 2 - Tuples'},
             'PT':{'sheet_name':'Figure 2 - Tuples'},
             'POS':{'sheet_name':'Figure 2 - Tuples'}

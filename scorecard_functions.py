@@ -496,9 +496,18 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     template = FlexTemplate(pdf,elements=pages['3'])
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability_{language}.jpg"
-    template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density_{language}.jpg"
+    # template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density_{language}.jpg"
     template["presence_rating"] = f"cities/{city}/policy_presence_rating_{language}.jpg"
-    template["quality_rating"] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
+    template["quality_rating"] = f"cities/{city}/policy_checklist_rating_{language}.jpg"    
+    
+    ## City planning requirement presence
+    template["policy2_text1_response"] =policy_indicators[city_policy['Presence'][0]]
+    template["policy2_text2_response"] =policy_indicators[city_policy['Presence'][1]]
+    template["policy2_text3_response"] =policy_indicators[city_policy['Presence'][2]]
+    template["policy2_text4_response"] =policy_indicators[city_policy['Presence'][3]]
+    template["policy2_text5_response"] =policy_indicators[city_policy['Presence'][4]]
+    ### Air pollution is a check of two policies met...
+    template["policy2_text6_response"] =policy_indicators[(city_policy['Presence'][5]+city_policy['Presence'][6])/2].replace('~','½')
 
     ## Walkable neighbourhood policy checklist
     for analysis in ['Checklist']:
@@ -513,18 +522,9 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['4'])
-    template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
+    # template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
     template["pct_access_500m_pt.jpg"] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
-    
-    ## City planning requirement presence
-    template["policy2_text1_response"] =policy_indicators[city_policy['Presence'][0]]
-    template["policy2_text2_response"] =policy_indicators[city_policy['Presence'][1]]
-    template["policy2_text3_response"] =policy_indicators[city_policy['Presence'][2]]
-    template["policy2_text4_response"] =policy_indicators[city_policy['Presence'][3]]
-    template["policy2_text5_response"] =policy_indicators[city_policy['Presence'][4]]
-    ### Air pollution is a check of two policies met...
-    template["policy2_text6_response"] =policy_indicators[(city_policy['Presence'][5]+city_policy['Presence'][6])/2].replace('~','½')
     
     ## Checklist ratings for PT and POS
     for analysis in ['PT','POS']:

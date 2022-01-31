@@ -25,7 +25,7 @@ parser.add_argument("--cities", default="Vic,Mexico City",
 parser.add_argument('--generate_resources', action='store_true',default=False,
     help='Generate images from input data for each city? Default is False.')
 
-parser.add_argument('--language', default="Spanish", type=str,
+parser.add_argument('--language', default="English", type=str,
     help='The desired language for presentation, as defined in the template workbook languages sheet.')
 
 config = parser.parse_args()

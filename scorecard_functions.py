@@ -435,7 +435,7 @@ def pdf_template_setup(template,template_sheet = 'scorecard_template_elements', 
         pages[f'{page}'] = [x for x in elements if x['page']==page]
     return pages
 
-def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_template, language = 'English', 
+def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, language = 'English', 
     template_sheet = 'scorecard_template_elements'):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
@@ -451,15 +451,12 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     for p in pages:
         for i,item in enumerate(pages[p]):
             if item['name'] in languages.name.values:
-                pages[p][i]['text']
-                pages[p][i]['text'] = languages.loc[languages['name']==item['name'],
-                                                    language].values[0].format(city=city)
-    if language != 'English':
-        scorecard_path = f'scorecards/{language}'
-        if not os.path.exists(scorecard_path):
-            os.mkdir(scorecard_path)
-    else:
-        scorecard_path = f'scorecards'
+                pages[p][i]['text'] = str(languages.loc[languages['name']==item['name'],
+                                            language].values[0]).format(city=city,year=year)
+    
+    scorecard_path = f'scorecards/{language}'
+    if not os.path.exists(scorecard_path):
+        os.mkdir(scorecard_path)
     
     policy_indicators = {0:u'✗',0.5:'~',1:u'✓'}
     pdf = FPDF(orientation="portrait", format="A4")
@@ -473,32 +470,31 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
                      fname=f.File.values[0], 
                      uni=True)
     
-    pdf.set_title(title)
-    pdf.set_author(author)
+    pdf.set_author(languages.loc[languages['name']=='title_author',language].values[0])
+    pdf.set_title(f"{languages.loc[languages['name']=='title_series',language].values[0]}: {year}")
     pdf.set_auto_page_break(False)
     
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
     template["title_city"] = f"{city}"
+    template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}.jpg"):
         template["hero_image"] = f"hero_images/{city}.jpg"
         template["hero_alt"]=""
     
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template.render()
-    # Set up next page
-    pdf.add_page(orientation="L")
-    template = FlexTemplate(pdf,elements=pages['2'])
-    template.render()
+    
     # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf,elements=pages['3'])
+    template = FlexTemplate(pdf,elements=pages['2'])
+    template["city_text"] = f"{languages.loc[languages['name']==city,language].values[0]}"
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability_{language}.jpg"
-    # template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density_{language}.jpg"
     template["presence_rating"] = f"cities/{city}/policy_presence_rating_{language}.jpg"
     template["quality_rating"] = f"cities/{city}/policy_checklist_rating_{language}.jpg"    
+    template["city_header"] = city
     
     ## City planning requirement presence
     template["policy2_text1_response"] =policy_indicators[city_policy['Presence'][0]]
@@ -521,8 +517,18 @@ def generate_scorecard(city,pages,title,author,city_policy, xlsx_scorecard_templ
     
     # Set up next page
     pdf.add_page()
+    template = FlexTemplate(pdf,elements=pages['3'])
+    template["local_nh_population_density"] = f"cities/{city}/local_nh_population_density_{language}.jpg"
+    template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
+    if os.path.exists(f"hero_images/{city}-2.jpg"):
+        template["hero_image_2"] = f"hero_images/{city}-2.jpg"
+        template["hero_alt_2"]=""
+    
+    template.render()
+    
+    # Set up next page
+    pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['4'])
-    # template["local_nh_intersection_density"] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
     template["pct_access_500m_pt.jpg"] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
     

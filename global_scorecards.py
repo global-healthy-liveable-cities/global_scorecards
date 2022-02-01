@@ -160,9 +160,8 @@ if __name__ == '__main__':
             
             scorecard_functions.generate_scorecard(
                 city,
+                year,
                 pages,
-                title = f"{city} Global Liveability Indicators Scorecard - {year}",
-                author = 'Global Healthy Liveable City Indicators Collaboaration Study',
                 city_policy = city_policy,
                 xlsx_scorecard_template = xlsx_scorecard_template,
                 language = language

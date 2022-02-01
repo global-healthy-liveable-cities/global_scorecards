@@ -371,7 +371,7 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
                       comparison = [threshold_scenarios['data'].loc[row].lower, 
                                     threshold_scenarios['data'].loc[row].upper], 
                       label = (f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-             f"({threshold_scenarios['data'].loc[row,city]}% of population within target threshold)"),
+             f"({threshold_scenarios['data'].loc[row,city]}{phrases['% of population within target threshold']})"),
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg")
              
@@ -409,7 +409,7 @@ def pdf_template_setup(template,template_sheet = 'scorecard_template_elements', 
     elements = pd.read_excel(template,sheet_name = template_sheet)
     document_pages = elements.page.unique()
     if font!=None:
-        elements.loc[elements.type=='T','font'] = font
+        elements.loc[elements.font=='custom','font'] = font
     
     elements = elements.to_dict(orient='records')
     elements = [{k:v if not str(v)=='nan' else None for k,v in x.items()} for x in elements]
@@ -447,6 +447,8 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
         os.mkdir('scorecards')
     
     languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
+    metadata_author = languages.loc[languages['name']=='title_author','English'].values[0]
+    metadata_title  = languages.loc[languages['name']=='title_series','English'].values[0]
     languages = languages.loc[languages['role']=='template',['name',language]]
     for p in pages:
         for i,item in enumerate(pages[p]):
@@ -462,16 +464,17 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     pdf = FPDF(orientation="portrait", format="A4")
     
     fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
-    fonts = fonts.loc[fonts['Language']==language].fillna('')
+    fonts = fonts.loc[fonts['Language'].isin(['English',language])].fillna('').drop_duplicates()
     for s in ['','B','I','BI']:
-        f = fonts.loc[fonts['Style']==s]
+      for l in ['English',language]:
+        f = fonts.loc[(fonts['Language']==l) & (fonts['Style']==s)]
         pdf.add_font(f.Font.values[0],
                      style=s,
                      fname=f.File.values[0], 
                      uni=True)
     
-    pdf.set_author(languages.loc[languages['name']=='title_author',language].values[0])
-    pdf.set_title(f"{languages.loc[languages['name']=='title_series',language].values[0]}: {year}")
+    pdf.set_author(metadata_author)
+    pdf.set_title( metadata_title )
     pdf.set_auto_page_break(False)
     
     # Set up Cover page

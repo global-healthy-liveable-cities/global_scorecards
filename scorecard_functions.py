@@ -95,7 +95,7 @@ def li_profile(city_stats, comparisons,title,cmap,path, phrases, width = fpdf2_m
             ha="center", va="center", size=textsize, zorder=12)
     ax.text(ANGLES[0]+ 0.012, 
             comparisons['p50'][0] + 10, 
-            f"\n\n{phrases['Global comparison']}", rotation=0, 
+            f"\n\n{phrases['25 city comparison']}", rotation=0, 
             ha="right", va="center", size=0.9*textsize, zorder=12)
     fig.savefig(path,dpi=dpi) 
     plt.close(fig)    
@@ -252,6 +252,7 @@ def policy_rating(range,
                   width = fpdf2_mm_scale(70), 
                   height = fpdf2_mm_scale(15),
                   label = 'Policies identified',
+                  comparison_label = '25 city median',
                   path='policy_rating_test.jpg',
                   dpi = 300):
     """
@@ -274,8 +275,16 @@ def policy_rating(range,
         ax.xaxis.set_ticks([])
     else:
         ax.xaxis.set_major_locator(ticker.FixedLocator([comparison['50%']]))
-        ax.set_xticklabels([f'25 city median'])
+        ax.set_xticklabels([comparison_label])
         ax.tick_params(labelsize=textsize)
+        if comparison['50%'] < 7:
+            for t in ax.get_yticklabels():
+                t.set_horizontalalignment('left')   
+                #t.set_x(3.5)
+        if comparison['50%'] > 18:
+            for t in ax.get_yticklabels():
+                t.set_horizontalalignment('right')   
+                #t.set_x(3.5)
     # Format City ticks
     ax_city = ax.twiny()
     ax_city.set_xlim(range)
@@ -380,7 +389,8 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
               range = [0,24],
               score = city_policy['Presence_rating'],
               comparison = city_policy['Presence_global'],
-              label = f"\n{phrases['Policies identified']}",
+              label = '',
+              comparison_label = phrases['25 city comparison'],
               cmap=cmap,
               path=f"{city_path}/policy_presence_rating_{language}.jpg")
     policy_rating(
@@ -388,6 +398,7 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
               score = city_policy['Checklist_rating'],
               comparison = city_policy['Checklist_global'],
               label = '',
+              comparison_label = phrases['25 city comparison'],
               cmap=cmap,
               path=f"{city_path}/policy_checklist_rating_{language}.jpg")
     return(city_path)

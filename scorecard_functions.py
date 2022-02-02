@@ -468,10 +468,11 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     for s in ['','B','I','BI']:
       for l in ['English',language]:
         f = fonts.loc[(fonts['Language']==l) & (fonts['Style']==s)]
-        pdf.add_font(f.Font.values[0],
-                     style=s,
-                     fname=f.File.values[0], 
-                     uni=True)
+        if f"{f.Font.values[0]}{s}" not in pdf.fonts.keys():
+            pdf.add_font(f.Font.values[0],
+                         style=s,
+                         fname=f.File.values[0], 
+                         uni=True)
     
     pdf.set_author(metadata_author)
     pdf.set_title( metadata_title )

@@ -125,6 +125,10 @@ if __name__ == '__main__':
             header=policy_lookup['parameters']['header'],
             nrows=policy_lookup['parameters']['nrows'],
             index_col=policy_lookup['parameters']['index_col'])
+        ## Get GDP category stratified comparison totals - not implemeneted
+        ##df_policy[policy_analysis]['middle_income'] = (df_policy[policy_analysis].GDP!="High-income")\
+        #                                                    .astype(str).map({'True':'Middle', 'False':'Upper'})
+        ##df_policy[policy_analysis][['middle_income']+list(df_labels[df_labels['Display']==policy_analysis].index)].groupby('middle_income').sum().transpose()
         if policy_analysis in ['Presence','Checklist']:
             # store overall rating for this analysis
             df_policy[f'{policy_analysis}_rating'] = df_policy[policy_analysis]\

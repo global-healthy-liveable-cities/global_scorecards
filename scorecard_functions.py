@@ -202,17 +202,17 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
                 arrowprops=dict(facecolor='black', width=4, headwidth=8),
                 ha='center', va='center', fontsize=textsize,
                 xycoords=ax.transAxes)
-    # Add threshold band on legend
-    extrema = cax.get_xlim()
-    ax_low  = (comparison[0]-extrema[0])/(extrema[1]-extrema[0])
-    ax_high = (comparison[1]-extrema[0])/(extrema[1]-extrema[0])
-    ax_diff = ax_high-ax_low
-    cax.annotate('', 
-                 xy=(ax_low, 0.5), 
-                 xytext=(ax_high,0.5),
-                arrowprops=dict(facecolor='black', arrowstyle="-"),
-                ha='center', va='center', fontsize=textsize,
-                xycoords=cax.transAxes)
+    ## Add threshold band on legend
+    #extrema = cax.get_xlim()
+    #ax_low  = (comparison[0]-extrema[0])/(extrema[1]-extrema[0])
+    #ax_high = (comparison[1]-extrema[0])/(extrema[1]-extrema[0])
+    #ax_diff = ax_high-ax_low
+    #cax.annotate('', 
+    #             xy=(ax_low, 0.5), 
+    #             xytext=(ax_high,0.5),
+    #            arrowprops=dict(facecolor='black', arrowstyle="-"),
+    #            ha='center', va='center', fontsize=textsize,
+    #            xycoords=cax.transAxes)
     cax.xaxis.set_major_formatter(ticker.EngFormatter())
     cax.tick_params(labelsize=textsize)
     cax.xaxis.label.set_size(textsize)
@@ -290,8 +290,8 @@ def policy_rating(range,
     ax_city.set_xlim(range)
     ax_city.xaxis.set_major_locator(ticker.FixedLocator([score]))
     sep = ''
-    if comparison is not None and label=='':
-        sep = '\n'
+    #if comparison is not None and label=='':
+    #    sep = '\n'
     ax_city.set_xticklabels([f"{sep}{str(score).rstrip('0').rstrip('.')}/{range[1]}{label}"])
     ax_city.tick_params(labelsize=textsize)
     # return figure with final styling
@@ -379,8 +379,11 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
                       scale = threshold_scenarios['lookup'][row]['scale'],
                       comparison = [threshold_scenarios['data'].loc[row].lower, 
                                     threshold_scenarios['data'].loc[row].upper], 
-                      label = (f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-             f"({threshold_scenarios['data'].loc[row,city]}{phrases['% of population within target threshold']})"),
+                      label = (
+                        f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
+                        f"({threshold_scenarios['data'].loc[row,city]}{phrases['% of population within target threshold']}, "
+                        f"{threshold_scenarios['data'].loc[row].lower} to {threshold_scenarios['data'].loc[row].upper})"
+                        ),
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg")
              
@@ -493,7 +496,7 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
     template["title_city"] = f"{city}"
-    template["title_year"] = f"{year}"
+    #template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}.jpg"):
         template["hero_image"] = f"hero_images/{city}.jpg"
         template["hero_alt"]=""

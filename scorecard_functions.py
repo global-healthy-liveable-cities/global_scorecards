@@ -520,9 +520,8 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     template["policy2_text3_response"] =policy_indicators[city_policy['Presence'][2]]
     template["policy2_text4_response"] =policy_indicators[city_policy['Presence'][3]]
     template["policy2_text5_response"] =policy_indicators[city_policy['Presence'][4]]
-    ### Air pollution is a check of two policies met...
-    template["policy2_text6_response"] =policy_indicators[(city_policy['Presence'][5]+city_policy['Presence'][6])/2].replace('~','½')
-
+    template["policy2_text6_response"] =policy_indicators[city_policy['Presence'][5]]
+    
     ## Walkable neighbourhood policy checklist
     for analysis in ['Checklist']:
         for i,policy in enumerate(city_policy[analysis].index):
@@ -563,17 +562,18 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['5'])
+    template["licence_image"] = f"logos/by-nc.jpg"
     template["1024px-RMIT_University_Logo.svg.png"] = f"logos/1024px-RMIT_University_Logo.svg.png"
     template["University_of_Melbourne.png"] = f"logos/University_of_Melbourne.png"
-    template["North_Carolina_State_University"] = f"logos/University_of_Melbourne.png"
-    template["University_of_Southern_California"] = f"logos/University_of_Melbourne.png"
-    template["Australian_Catholic_University"] = f"logos/University_of_Melbourne.png"
-    template["University_of_Hong_Kong"] = f"logos/University_of_Melbourne.png"
-    template["Auckland_University_of_Technology"] = f"logos/University_of_Melbourne.png"
-    template["Northeastern_University"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
-    template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
+    # template["North_Carolina_State_University"] = f"logos/University_of_Melbourne.png"
+    # template["University_of_Southern_California"] = f"logos/University_of_Melbourne.png"
+    # template["Australian_Catholic_University"] = f"logos/University_of_Melbourne.png"
+    # template["University_of_Hong_Kong"] = f"logos/University_of_Melbourne.png"
+    # template["Auckland_University_of_Technology"] = f"logos/University_of_Melbourne.png"
+    # template["Northeastern_University"] = f"logos/1024px-RMIT_University_Logo.svg.png"
+    # template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
+    # template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
+    # template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
     
     template.render()
     

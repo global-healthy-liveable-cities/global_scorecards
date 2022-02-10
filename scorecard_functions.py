@@ -570,5 +570,5 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     template.render()
     
     # Output scorecard pdf
-    pdf.output(f"{scorecard_path}/GHSCIC 2022 - {metadata_title1.replace(':','')} - {city_name} - {vernacular}.pdf")
+    pdf.output(f"{scorecard_path}/{city_name} - {languages.loc[languages['name']=='title_series_line1',language].values[0].replace(':','')} - GHSCIC 2022 - {vernacular}.pdf")
     return f"Scorecard generated: {scorecard_path}/scorecard_{city}.pdf"

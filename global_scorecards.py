@@ -46,8 +46,8 @@ if __name__ == '__main__':
     xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
     # set up fonts
     fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
-    if language in fonts.Language.unique():
-        fonts = fonts.loc[fonts['Language']==language].fillna('')
+    if language.replace(' (Auto-translation)','') in fonts.Language.unique():
+        fonts = fonts.loc[fonts['Language']==language.replace(' (Auto-translation)','')].fillna('')
     else:
         fonts = fonts.loc[fonts['Language']=='default'].fillna('')
     fm.fontManager.addfont(fonts.File.values[0])

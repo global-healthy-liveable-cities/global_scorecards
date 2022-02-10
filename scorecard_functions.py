@@ -163,7 +163,7 @@ def spatial_dist_map(gdf,
     fig.savefig(path,dpi=dpi) 
     plt.close(fig)   
 
-def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = fpdf2_mm_scale(88),height = fpdf2_mm_scale(80), dpi = 300):
+def threshold_map(gdf, column, comparison,scale,label,cmap,path,width = fpdf2_mm_scale(88),height = fpdf2_mm_scale(80), dpi = 300):
     figsize=(width, height)
     textsize = 14
     fig, ax = plt.subplots(figsize=figsize)
@@ -175,13 +175,10 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
     gdf.plot(column=column,
             ax=ax,
             legend=True,
-            #vmin = range[0],
-            #vmax = range[1],
             legend_kwds={'label':label,
                          'orientation':'horizontal'},
             cax=cax,
             cmap=cmap,
-            #norm = mpl.colors.LogNorm(vmin=1, vmax=range[1])
             )
     gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
     # cities vary in scale, but in general
@@ -202,17 +199,6 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
                 arrowprops=dict(facecolor='black', width=4, headwidth=8),
                 ha='center', va='center', fontsize=textsize,
                 xycoords=ax.transAxes)
-    ## Add threshold band on legend
-    #extrema = cax.get_xlim()
-    #ax_low  = (comparison[0]-extrema[0])/(extrema[1]-extrema[0])
-    #ax_high = (comparison[1]-extrema[0])/(extrema[1]-extrema[0])
-    #ax_diff = ax_high-ax_low
-    #cax.annotate('', 
-    #             xy=(ax_low, 0.5), 
-    #             xytext=(ax_high,0.5),
-    #            arrowprops=dict(facecolor='black', arrowstyle="-"),
-    #            ha='center', va='center', fontsize=textsize,
-    #            xycoords=cax.transAxes)
     cax.xaxis.set_major_formatter(ticker.EngFormatter())
     cax.tick_params(labelsize=textsize)
     cax.xaxis.label.set_size(textsize)
@@ -220,7 +206,7 @@ def threshold_map(gdf, column, range,scale,comparison, label,cmap,path,width = f
     fig.savefig(path,dpi=dpi) 
     plt.close(fig) 
 
-def setup_thresholds(csv_thresholds_data,threshold_lookup):
+def setup_thresholds(csv_thresholds_data,threshold_lookup,scenario='B'):
     """
     A help script for identifying lower and upper bound thresholds associated with specific policy scenarios
     """
@@ -233,14 +219,16 @@ def setup_thresholds(csv_thresholds_data,threshold_lookup):
     thresholds['location'] = thresholds.iloc[:,0].apply(lambda x: x.split(' - ')[2])
     thresholds = thresholds[threshold_index_cols+list(cities)]
     # Extract threshold scenarios from variables
-    threshold_scenarios = thresholds.loc[thresholds.location.str.startswith('within')]
-    threshold_scenarios = threshold_scenarios.loc[threshold_scenarios.scenario=='B']
-    threshold_scenarios['lower'] = threshold_scenarios.location.apply(lambda x: int(x[0:-1].split('(')[1].split(', ')[0]))
-    threshold_scenarios['upper'] = threshold_scenarios.location.apply(lambda x: int(x[0:-1].split('(')[1].split(', ')[1]))
-    threshold_scenarios = (threshold_scenarios.set_index('description'))
+    threshold_scenarios = thresholds.loc[~(thresholds.location.str.startswith('below'))
+                                         & (thresholds.scenario==scenario)]
+    threshold_lower_bound = threshold_scenarios.loc[threshold_scenarios.location.str.startswith('within'),['description','location']]
+    threshold_lower_bound['location'] = threshold_lower_bound.location.apply(lambda x: int(x[0:-1].split('(')[1].split(', ')[0]))
+    threshold_lower_bound = threshold_lower_bound.set_index('description')
+    threshold_scenarios = threshold_scenarios.groupby(['description']).sum()
     threshold_scenarios = {
         'data' : threshold_scenarios,
-        'lookup' : threshold_lookup
+        'lookup' : threshold_lookup,
+        'lower_bound' : threshold_lower_bound
     }
     return threshold_scenarios
 
@@ -320,6 +308,7 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
     for i,item in enumerate(city_stats['access'].index):
         if str(city_stats['access'][i])=='nan':
             city_stats_index[i] = f"{city_stats['access'].index[i]} (not evaluated)"
+    
     city_stats['access'].index = city_stats_index
     languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
     languages = languages.loc[languages['role']=='plot',['name',language]]
@@ -375,14 +364,12 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
     for row in threshold_scenarios['data'].index:
         threshold_map(gdf, 
                       column = threshold_scenarios['lookup'][row]['field'], 
-                      range = threshold_scenarios['lookup'][row]['range'],
                       scale = threshold_scenarios['lookup'][row]['scale'],
-                      comparison = [threshold_scenarios['data'].loc[row].lower, 
-                                    threshold_scenarios['data'].loc[row].upper], 
+                      comparison = threshold_scenarios['lower_bound'].loc[row].location, 
                       label = (
                         f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-                        f"({threshold_scenarios['data'].loc[row,city]}{phrases['% of population within target threshold']}, "
-                        f"{threshold_scenarios['data'].loc[row].lower} to {threshold_scenarios['data'].loc[row].upper})"
+                        f"({threshold_scenarios['data'].loc[row,city]}{phrases['optimal_range']}, "
+                        f"{threshold_scenarios['lower_bound'].loc[row].location})"
                         ),
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg")
@@ -462,9 +449,10 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     
     languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
     metadata_author = languages.loc[languages['name']=='title_author','English'].values[0]
-    metadata_title  = (f"{languages.loc[languages['name']=='title_series_line1','English'].values[0]} "
-                       f"{languages.loc[languages['name']=='title_series_line2','English'].values[0]}")
+    metadata_title1 = languages.loc[languages['name']=='title_series_line1','English'].values[0]
+    metadata_title2 = languages.loc[languages['name']=='title_series_line2','English'].values[0]
     languages = languages.loc[languages['role']=='template',['name',language]]
+    vernacular = languages.loc[languages['name']=='language',language].values[0]
     city_name = languages.loc[languages['name']==city,language].values[0]
     for p in pages:
         for i,item in enumerate(pages[p]):
@@ -480,11 +468,11 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     pdf = FPDF(orientation="portrait", format="A4")
     
     fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
-    fonts = fonts.loc[fonts['Language'].isin(['default',language])].fillna('').drop_duplicates()
+    fonts = fonts.loc[fonts['Language'].isin(['default',language.replace(' (Auto-translation)','')])].fillna('').drop_duplicates()
     for s in ['','B','I','BI']:
       for l in ['default',language]:
-        if l in fonts.Language.unique():
-            f = fonts.loc[(fonts['Language']==l) & (fonts['Style']==s)]
+        if l.replace(' (Auto-translation)','') in fonts.Language.unique():
+            f = fonts.loc[(fonts['Language']==l.replace(' (Auto-translation)','')) & (fonts['Style']==s)]
             if f"{f.Font.values[0]}{s}" not in pdf.fonts.keys():
                 pdf.add_font(f.Font.values[0],
                              style=s,
@@ -492,13 +480,13 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
                              uni=True)
     
     pdf.set_author(metadata_author)
-    pdf.set_title( metadata_title )
+    pdf.set_title( f'{metadata_title1} {metadata_title2}')
     pdf.set_auto_page_break(False)
     
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
-    template["title_city"] = f"{city}"
+    template["title_city"] = f"{city_name}"
     #template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}.jpg"):
         template["hero_image"] = f"hero_images/{city}.jpg"
@@ -582,5 +570,5 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     template.render()
     
     # Output scorecard pdf
-    pdf.output(f"{scorecard_path}/scorecard_{city}.pdf")
+    pdf.output(f"{scorecard_path}/GHSCIC 2022 - {metadata_title1.replace(':','')} - {city_name} - {vernacular}.pdf")
     return f"Scorecard generated: {scorecard_path}/scorecard_{city}.pdf"

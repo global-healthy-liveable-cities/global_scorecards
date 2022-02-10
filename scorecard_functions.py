@@ -462,13 +462,15 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     
     languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
     metadata_author = languages.loc[languages['name']=='title_author','English'].values[0]
-    metadata_title  = languages.loc[languages['name']=='title_series','English'].values[0]
+    metadata_title  = (f"{languages.loc[languages['name']=='title_series_line1','English'].values[0]} "
+                       f"{languages.loc[languages['name']=='title_series_line2','English'].values[0]}")
     languages = languages.loc[languages['role']=='template',['name',language]]
+    city_name = languages.loc[languages['name']==city,language].values[0]
     for p in pages:
         for i,item in enumerate(pages[p]):
             if item['name'] in languages.name.values:
                 pages[p][i]['text'] = str(languages.loc[languages['name']==item['name'],
-                                            language].values[0]).format(city=city,year=year)
+                                            language].values[0]).format(city=city_name,year=year)
     
     scorecard_path = f'scorecards/{language}'
     if not os.path.exists(scorecard_path):
@@ -478,15 +480,16 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     pdf = FPDF(orientation="portrait", format="A4")
     
     fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
-    fonts = fonts.loc[fonts['Language'].isin(['English',language])].fillna('').drop_duplicates()
+    fonts = fonts.loc[fonts['Language'].isin(['default',language])].fillna('').drop_duplicates()
     for s in ['','B','I','BI']:
-      for l in ['English',language]:
-        f = fonts.loc[(fonts['Language']==l) & (fonts['Style']==s)]
-        if f"{f.Font.values[0]}{s}" not in pdf.fonts.keys():
-            pdf.add_font(f.Font.values[0],
-                         style=s,
-                         fname=f.File.values[0], 
-                         uni=True)
+      for l in ['default',language]:
+        if l in fonts.Language.unique():
+            f = fonts.loc[(fonts['Language']==l) & (fonts['Style']==s)]
+            if f"{f.Font.values[0]}{s}" not in pdf.fonts.keys():
+                pdf.add_font(f.Font.values[0],
+                             style=s,
+                             fname=f.File.values[0], 
+                             uni=True)
     
     pdf.set_author(metadata_author)
     pdf.set_title( metadata_title )
@@ -507,7 +510,7 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['2'])
-    template["city_text"] = f"{languages.loc[languages['name']==city,language].values[0]}"
+    
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability_{language}.jpg"
     template["presence_rating"] = f"cities/{city}/policy_presence_rating_{language}.jpg"
@@ -548,6 +551,7 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     template = FlexTemplate(pdf,elements=pages['4'])
     template["pct_access_500m_pt.jpg"] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
     template["pct_access_500m_public_open_space_large_score"] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
+    template["city_text"] = f"{languages.loc[languages['name']==f'{city} - Summary',language].values[0]}"
     
     ## Checklist ratings for PT and POS
     for analysis in ['PT','POS']:

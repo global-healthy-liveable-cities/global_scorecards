@@ -48,8 +48,6 @@ if __name__ == '__main__':
   csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
   xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
   xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
-  fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
-  
   # Run all specified language-city permutations if auto-language detection
   if config.auto_language:
       languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
@@ -67,7 +65,7 @@ if __name__ == '__main__':
     print(f"\n{language} language reports:")
     cities = languages[language]
     # set up fonts
-    
+    fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
     if language.replace(' (Auto-translation)','') in fonts.Language.unique():
         fonts = fonts.loc[fonts['Language']==language.replace(' (Auto-translation)','')].fillna('')
     else:

@@ -66,7 +66,10 @@ def li_profile(city_stats, comparisons,title,cmap,path, phrases, width = fpdf2_m
     # Add dots to represent the mean gain
     ax.scatter(ANGLES, COMPARISON, s=60, color=GREY12, zorder=11)
     # Add labels for the regions
-    LABELS = ["\n".join(wrap(r, 10, break_long_words=False)) for r in INDICATORS]
+    try:
+        LABELS = ["\n".join(wrap(r, 10, break_long_words=False)) for r in INDICATORS]
+    except:
+        LABELS = INDICATORS
     # Set the labels
     ax.set_xticks(ANGLES)
     ax.set_xticklabels(LABELS, size=textsize);

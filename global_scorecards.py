@@ -54,7 +54,12 @@ if __name__ == '__main__':
   if config.auto_language:
       languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
       languages = languages.query(f"name in {all_cities}").dropna(axis=1, how='all')
-      languages = languages[languages.columns[2:]].transpose().stack().groupby(level=0).apply(list)
+      languages = languages[languages.columns[1:]].set_index('name')
+      # replace all city name variants with English equivalent for grouping purposes
+      for city in languages.index:
+        languages.loc[city][languages.loc[city].notnull()] = city
+      
+      languages = languages[languages.columns].transpose().stack().groupby(level=0).apply(list)
   else:
       languages = pd.Series([all_cities],index=[config.language])
   

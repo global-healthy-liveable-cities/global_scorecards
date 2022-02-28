@@ -503,7 +503,7 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     template["all_cities_walkability"] = f"cities/{city}/all_cities_walkability_{language}.jpg"
     template["presence_rating"] = f"cities/{city}/policy_presence_rating_{language}.jpg"
     template["quality_rating"] = f"cities/{city}/policy_checklist_rating_{language}.jpg"    
-    template["city_header"] = city
+    template["city_header"] = city_name
     
     ## City planning requirement presence
     template["policy2_text1_response"] =policy_indicators[city_policy['Presence'][0]]

@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(
     description='Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study'
     )
 
-parser.add_argument("--cities", default="Vic,Mexico City",
+parser.add_argument("--cities", default="Maiduguri,Mexico City,Baltimore,Phoenix,Seattle,Sao Paulo,Hong Kong,Chennai,Bangkok,Hanoi,Graz,Ghent,Bern,Olomouc,Cologne,Odense,Barcelona,Valencia,Vic,Belfast,Lisbon,Adelaide,Melbourne,Sydney,Auckland",
     help=('A list of cities, for example: Baltimore, Phoenix, Seattle, Adelaide, Melbourne, '
           'Sydney, Auckland, Bern, Odense, Graz, Cologne, Ghent, Belfast, Barcelona, Valencia, Vic, '
           'Lisbon, Olomouc, Hong, Kong, Mexico City, Sao, Paulo, Bangkok, Hanoi, Maiduguri, Chennai'))
@@ -28,24 +28,41 @@ parser.add_argument('--generate_resources', action='store_true',default=False,
 parser.add_argument('--language', default="English", type=str,
     help='The desired language for presentation, as defined in the template workbook languages sheet.')
 
+parser.add_argument('--auto_language', action='store_true',default=False,
+    help='Identify all languages associated with specified cities and prepare reports for these.')
+
+
 config = parser.parse_args()
-language = config.language
+all_cities = [x.strip() for x in config.cities.split(',')]
 cmap = batlow_map
 
 if __name__ == '__main__':
-    # load city parameters
-    with open('../../process/configuration/cities.json') as f:
-      city_data = json.load(f)
-    
-    # Identify data sources
-    gpkg_hexes = os.path.abspath('../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg')
-    csv_city_indicators = os.path.abspath("../../process/data/output/global_indicators_city_2021-06-21.csv")
-    csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
-    csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
-    xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
-    xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
+  # load city parameters
+  with open('../../process/configuration/cities.json') as f:
+    city_data = json.load(f)
+  
+  # Identify data sources
+  gpkg_hexes = os.path.abspath('../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg')
+  csv_city_indicators = os.path.abspath("../../process/data/output/global_indicators_city_2021-06-21.csv")
+  csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
+  csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
+  xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
+  xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
+  fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
+  
+  # Run all specified language-city permutations if auto-language detection
+  if config.auto_language:
+      languages = pd.read_excel(xlsx_scorecard_template,sheet_name = 'languages')
+      languages = languages.query(f"name in {all_cities}").dropna(axis=1, how='all')
+      languages = languages[languages.columns[2:]].transpose().stack().groupby(level=0).apply(list)
+  else:
+      languages = pd.Series([all_cities],index=[config.language])
+  
+  for language in languages.index:
+    print(f"\n{language} language reports:")
+    cities = languages[language]
     # set up fonts
-    fonts = pd.read_excel(xlsx_scorecard_template,sheet_name = 'fonts')
+    
     if language.replace(' (Auto-translation)','') in fonts.Language.unique():
         fonts = fonts.loc[fonts['Language']==language.replace(' (Auto-translation)','')].fillna('')
     else:
@@ -143,10 +160,9 @@ if __name__ == '__main__':
             df_policy[policy_analysis] = df_policy[policy_analysis].apply(lambda x: x.str.split(':'),axis=1)
     
     # Loop over cities
-    cities = [x.strip() for x in config.cities.split(',')]
     successful = 0
     for city in cities:
-        print(city)
+        print(f'- {city}')
         try:
             year = 2020
             city_policy={}

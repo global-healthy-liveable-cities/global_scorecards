@@ -368,8 +368,8 @@ def generate_resources(city,gpkg_hexes,df,indicators,comparisons,threshold_scena
                       comparison = threshold_scenarios['lower_bound'].loc[row].location, 
                       label = (
                         f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-                        f"({threshold_scenarios['data'].loc[row,city]}{phrases['optimal_range']}, "
-                        f"{threshold_scenarios['lower_bound'].loc[row].location})"
+                        f"({threshold_scenarios['data'].loc[row,city]}{phrases['optimal_range']},\n "
+                        f"{threshold_scenarios['lower_bound'].loc[row].location:,} {phrases['density_units']})"
                         ),
              cmap=cmap,
              path = f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg")

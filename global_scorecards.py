@@ -70,6 +70,7 @@ if __name__ == '__main__':
         fonts = fonts.loc[fonts['Language']==language.replace(' (Auto-translation)','')].fillna('')
     else:
         fonts = fonts.loc[fonts['Language']=='default'].fillna('')
+    
     fm.fontManager.addfont(fonts.File.values[0])
     prop = fm.FontProperties(fname=fonts.File.values[0])
     fm.findfont(prop=prop,directory=fonts.File.values[0], rebuild_if_missing=True)

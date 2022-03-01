@@ -64,7 +64,8 @@ def li_profile(city_stats, comparisons,title,cmap,path, phrases, width = fpdf2_m
               color=GREY12, 
               zorder=11)
     # Add dots to represent the mean gain
-    ax.scatter(ANGLES, COMPARISON, s=60, color=GREY12, zorder=11)
+    comparison_text = '\n'.join(wrap(phrases['25 city comparison'], 25, break_long_words=False))
+    ax.scatter(ANGLES, COMPARISON, s=60, color=GREY12, zorder=11,  label=comparison_text)
     # Add labels for the regions
     try:
         LABELS = ["\n".join(wrap(r, 10, break_long_words=False)) for r in INDICATORS]
@@ -96,12 +97,11 @@ def li_profile(city_stats, comparisons,title,cmap,path, phrases, width = fpdf2_m
     # height of the dot
     ax.text(ANGLES[0], -50, title, rotation=0, 
             ha="center", va="center", size=textsize, zorder=12)
-    ax.text(ANGLES[0]+ 0.012, 
-            comparisons['p50'][0] + 10, 
-            f"\n\n{phrases['25 city comparison']}", rotation=0, 
-            ha="right", va="center", size=0.9*textsize, zorder=12)
+    angle = np.deg2rad(130)
+    ax.legend(loc="lower right",
+              bbox_to_anchor=(0.58 + np.cos(angle)/2, 0.46 + np.sin(angle)/2))
     fig.savefig(path,dpi=dpi) 
-    plt.close(fig)    
+    plt.close(fig)  
 
 ## Spatial distribution mapping       
 def spatial_dist_map(gdf,
@@ -267,7 +267,8 @@ def policy_rating(range,
     else:
         ax.xaxis.set_major_locator(ticker.FixedLocator([comparison['50%']]))
         ax.set_xticklabels([comparison_label])
-        ax.tick_params(labelsize=textsize)
+        ax.tick_params(labelsize=textsize)    
+        ax.plot(comparison['50%'],0,marker='v',color='black',markersize=9,zorder=10,clip_on=False)        
         if comparison['50%'] < 7:
             for t in ax.get_yticklabels():
                 t.set_horizontalalignment('left')   
@@ -280,6 +281,7 @@ def policy_rating(range,
     ax_city = ax.twiny()
     ax_city.set_xlim(range)
     ax_city.xaxis.set_major_locator(ticker.FixedLocator([score]))
+    ax_city.plot(score,1,marker='^',color='black',markersize=9,zorder=10,clip_on=False)        
     sep = ''
     #if comparison is not None and label=='':
     #    sep = '\n'
@@ -457,11 +459,14 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     languages = languages.loc[languages['role']=='template',['name',language]]
     vernacular = languages.loc[languages['name']=='language',language].values[0]
     city_name = languages.loc[languages['name']==city,language].values[0]
+    country_name = languages.loc[languages['name']==f'{city} - Country',language].values[0]
     for p in pages:
         for i,item in enumerate(pages[p]):
             if item['name'] in languages.name.values:
                 pages[p][i]['text'] = str(languages.loc[languages['name']==item['name'],
-                                            language].values[0]).format(city=city_name,year=year)
+                                            language].values[0]).format(city=city_name,
+                                                                        country=country_name,
+                                                                        year=year)
     
     scorecard_path = f'scorecards/{language}'
     if not os.path.exists(scorecard_path):
@@ -489,7 +494,7 @@ def generate_scorecard(city,year,pages, city_policy, xlsx_scorecard_template, la
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf,elements=pages['1'])
-    template["title_city"] = f"{city_name}"
+    template["title_city"] = f"{city_name}, {country_name}"
     #template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}.jpg"):
         template["hero_image"] = f"hero_images/{city}.jpg"

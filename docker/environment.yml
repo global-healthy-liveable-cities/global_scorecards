@@ -1,0 +1,12 @@
+name: global_scorecards
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.*
+  - geopandas=0.10.2
+  - pygeos=0.12.0
+  - osmnx=1.1.2
+  - descartes=1.1.*
+  - fpdf2=2.4.*
+  - openpyxl=3.0.9

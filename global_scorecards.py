@@ -71,9 +71,10 @@ if __name__ == '__main__':
     else:
         fonts = fonts.loc[fonts['Language']=='default'].fillna('')
     
-    fm.fontManager.addfont(fonts.File.values[0])
-    prop = fm.FontProperties(fname=fonts.File.values[0])
-    fm.findfont(prop=prop,directory=fonts.File.values[0], rebuild_if_missing=True)
+    main_font = fonts.File.values[0].strip()
+    fm.fontManager.addfont(main_font)
+    prop = fm.FontProperties(fname=main_font)
+    fm.findfont(prop=prop,directory=main_font, rebuild_if_missing=True)
     plt.rcParams['font.family'] = prop.get_name()
     font = fonts.Font.values[0]
     # Set up main city indicators

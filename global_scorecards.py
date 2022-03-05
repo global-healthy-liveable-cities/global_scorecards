@@ -180,8 +180,10 @@ if __name__ == "__main__":
         policy_lookup = {
             "worksheet": xlsx_policy_data,
             "analyses": {
-                "Presence": {"sheet_name": "Figure 1 - transposed rounded"},
-                "Checklist": {"sheet_name": "Figure 2 - Tuples"},
+                "Presence": {"sheet_name": "Figure 1 - transposed rounded",
+                              "column":"TOTAL NUMBER OF MEASURES WHERE POLICY IS PRESENT (/24)"},
+                "Checklist": {"sheet_name": "Figure 2 - Tuples",
+                               "column": "Overall measurability and evidency consistency (maximum /57)"},
                 "PT": {"sheet_name": "Figure 2 - Tuples"},
                 "POS": {"sheet_name": "Figure 2 - Tuples"},
             },
@@ -212,7 +214,7 @@ if __name__ == "__main__":
                 # store overall rating for this analysis
                 df_policy[f"{policy_analysis}_rating"] = df_policy[
                     policy_analysis
-                ].loc[:, df_policy[policy_analysis].columns[-1]]
+                ].loc[:, policy_lookup["analyses"][policy_analysis]["column"]]
             # only retain relevant columns for this analysis
             df_policy[policy_analysis] = df_policy[policy_analysis][
                 df_labels[df_labels["Display"] == policy_analysis].index

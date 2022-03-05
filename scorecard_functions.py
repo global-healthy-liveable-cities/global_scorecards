@@ -469,7 +469,7 @@ def generate_resources(
             "range": [0, 100],
             "label": (
                 f"{phrases[('Percentage of population with access to public transport with service frequency of 20 minutes or less')]} "
-                f'({round(df.loc[city,"Public transport with regular service"],1)}%)'
+                f'({df.loc[city,"Public transport with regular service"]:.1f}%)'
             ),
             "tick_labels": None,
             "outfile": f"{city_path}/pct_access_500m_pt_{language}.jpg",
@@ -479,7 +479,7 @@ def generate_resources(
             "range": [0, 100],
             "label": (
                 f"{phrases[('Percentage of population with access to public open space of area 1.5 hectares or larger')]} "
-                f'({round(df.loc[city,"Large public open space"],1)}%)'
+                f'({df.loc[city,"Large public open space"]:.1f}%)'
             ),
             "tick_labels": None,
             "outfile": f"{city_path}/pct_access_500m_public_open_space_large_score_{language}.jpg",
@@ -495,7 +495,7 @@ def generate_resources(
         ] = "pct_access_500m_pt_any_score"
         spatial_distribution_figures[1]["label"] = (
             f"{phrases['Percentage of population with access to public transport']}\n"
-            f'({round(df.loc[city,"Public transport stop"],1)}%)'
+            f'({df.loc[city,"Public transport stop"]:.1f}%)'
         )
 
     for f in spatial_distribution_figures:

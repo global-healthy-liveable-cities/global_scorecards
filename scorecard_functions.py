@@ -351,7 +351,8 @@ def policy_rating(
         ax.xaxis.set_ticks([])
     else:
         ax.xaxis.set_major_locator(ticker.FixedLocator([comparison["50%"]]))
-        ax.set_xticklabels([comparison_label])
+        # ax.set_xticklabels([comparison_label])
+        ax.set_xticklabels([""])
         ax.tick_params(labelsize=textsize)
         ax.plot(
             comparison["50%"],
@@ -388,6 +389,7 @@ def policy_rating(
     )
     ax_city.tick_params(labelsize=textsize)
     # return figure with final styling
+    ax.set_xlabel(comparison_label,labelpad=0.5,fontsize=textsize)
     plt.tight_layout()
     fig.savefig(path, dpi=dpi)
     plt.close(fig)

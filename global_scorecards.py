@@ -181,7 +181,7 @@ if __name__ == "__main__":
             "worksheet": xlsx_policy_data,
             "analyses": {
                 "Presence": {"sheet_name": "Figure 1 - transposed rounded",
-                              "column":"TOTAL NUMBER OF MEASURES WHERE POLICY IS PRESENT (/24)"},
+                              "column":"Sum"},
                 "Checklist": {"sheet_name": "Figure 2 - Tuples",
                                "column": "Overall measurability and evidency consistency (maximum /57)"},
                 "PT": {"sheet_name": "Figure 2 - Tuples"},

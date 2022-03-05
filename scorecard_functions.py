@@ -517,7 +517,7 @@ def generate_resources(
             comparison=threshold_scenarios["lower_bound"].loc[row].location,
             label=(
                 f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-                f"({threshold_scenarios['data'].loc[row,city]}{phrases['optimal_range']},\n "
+                f"({threshold_scenarios['data'].loc[row,city]:.1f}{phrases['optimal_range']},\n "
                 f"{threshold_scenarios['lower_bound'].loc[row].location:,} {phrases['density_units']})"
             ),
             cmap=cmap,

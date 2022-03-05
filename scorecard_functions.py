@@ -518,9 +518,7 @@ def generate_resources(
             scale=threshold_scenarios["lookup"][row]["scale"],
             comparison=threshold_scenarios["lower_bound"].loc[row].location,
             label=(
-                f"{phrases[threshold_scenarios['lookup'][row]['title']]}\n"
-                f"({threshold_scenarios['data'].loc[row,city]:.1f}{phrases['optimal_range']},\n "
-                f"{threshold_scenarios['lower_bound'].loc[row].location:,} {phrases['density_units']})"
+                f"{phrases[threshold_scenarios['lookup'][row]['title']]} ({phrases['density_units']})"
             ),
             cmap=cmap,
             path=f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg",
@@ -598,6 +596,7 @@ def generate_scorecard(
     year,
     pages,
     city_policy,
+    threshold_scenarios,
     xlsx_scorecard_template,
     language="English",
     template_sheet="scorecard_template_elements",
@@ -612,6 +611,7 @@ def generate_scorecard(
         os.mkdir("scorecards")
 
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
+    phrases = json.loads(languages.set_index("name").to_json())[language]
     metadata_author = languages.loc[
         languages["name"] == "title_author", "English"
     ].values[0]
@@ -746,6 +746,14 @@ def generate_scorecard(
     template[
         "local_nh_population_density"
     ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
+    
+    for row in threshold_scenarios["data"].index:
+        template[
+            row
+        ] = (f"{threshold_scenarios['data'].loc[row,city]:.1f}{phrases['optimal_range']}, "
+             f"{phrases[threshold_scenarios['lookup'][row]['title']].lower()} "
+             f"{threshold_scenarios['lower_bound'].loc[row].location:,} {phrases['density_units']}")
+    
     template[
         "local_nh_intersection_density"
     ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"

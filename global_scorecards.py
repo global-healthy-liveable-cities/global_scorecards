@@ -270,6 +270,7 @@ if __name__ == "__main__":
                     city,
                     year,
                     pages,
+                    threshold_scenarios=threshold_scenarios,
                     city_policy=city_policy,
                     xlsx_scorecard_template=xlsx_scorecard_template,
                     language=language,

@@ -389,7 +389,11 @@ def policy_rating(
     )
     ax_city.tick_params(labelsize=textsize)
     # return figure with final styling
-    ax.set_xlabel(comparison_label,labelpad=0.5,fontsize=textsize)
+    ax.set_xlabel(
+        f"{comparison_label} ({comparison['50%']})",
+        labelpad=0.5,
+        fontsize=textsize,
+    )
     plt.tight_layout()
     fig.savefig(path, dpi=dpi)
     plt.close(fig)
@@ -697,11 +701,16 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
-
+    ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+    ## Walkability plot
     template[
         "all_cities_walkability"
     ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    template["walkability_above_median_pct"] = phrases[
+        "walkability_above_median_pct"
+    ].format(threshold_scenarios["walkability"])
+    ## Policy ratings
     template[
         "presence_rating"
     ] = f"cities/{city}/policy_presence_rating_{language}.jpg"
@@ -709,25 +718,24 @@ def generate_scorecard(
         "quality_rating"
     ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
     template["city_header"] = city_name
-
-    ## City planning requirement presence
+    ## City planning requirement presence (round 0.5 up to 1)
     template["policy2_text1_response"] = policy_indicators[
-        city_policy["Presence"][0]
+        np.ceil(city_policy["Presence"][0])
     ]
     template["policy2_text2_response"] = policy_indicators[
-        city_policy["Presence"][1]
+        np.ceil(city_policy["Presence"][1])
     ]
     template["policy2_text3_response"] = policy_indicators[
-        city_policy["Presence"][2]
+        np.ceil(city_policy["Presence"][2])
     ]
     template["policy2_text4_response"] = policy_indicators[
-        city_policy["Presence"][3]
+        np.ceil(city_policy["Presence"][3])
     ]
     template["policy2_text5_response"] = policy_indicators[
-        city_policy["Presence"][4]
+        np.ceil(city_policy["Presence"][4])
     ]
     template["policy2_text6_response"] = policy_indicators[
-        city_policy["Presence"][5]
+        np.ceil(city_policy["Presence"][5])
     ]
 
     ## Walkable neighbourhood policy checklist
@@ -743,20 +751,24 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
+
+    ## Density plots
     template[
         "local_nh_population_density"
     ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
-    
-    for row in threshold_scenarios["data"].index:
-        template[
-            row
-        ] = (f"{threshold_scenarios['data'].loc[row,city]:.1f}{phrases['optimal_range']}, "
-             f"{phrases[threshold_scenarios['lookup'][row]['title']].lower()} "
-             f"{threshold_scenarios['lower_bound'].loc[row].location:,} {phrases['density_units']}")
-    
+
     template[
         "local_nh_intersection_density"
     ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
+
+    ## Density threshold captions
+    for row in threshold_scenarios["data"].index:
+        template[row] = phrases[f"optimal_range - {row}"].format(
+            threshold_scenarios["data"].loc[row, city],
+            threshold_scenarios["lower_bound"].loc[row].location,
+            phrases["density_units"],
+        )
+
     if os.path.exists(f"hero_images/{city}-2.jpg"):
         template["hero_image_2"] = f"hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""

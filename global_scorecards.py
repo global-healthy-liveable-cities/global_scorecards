@@ -74,6 +74,9 @@ if __name__ == "__main__":
     csv_thresholds_data = os.path.abspath(
         "data/Global Indicators 2020 - thresholds summary estimates.csv"
     )
+    csv_walkability_data = os.path.abspath(
+        "data/Global Indicators - 2021-06-21 - percentage of population - walkability_above_median.csv"
+    )
     xlsx_policy_data = os.path.abspath(
         "data/Policy Figures 1 & 2_23 Dec_numerical.xlsx"
     )
@@ -180,10 +183,14 @@ if __name__ == "__main__":
         policy_lookup = {
             "worksheet": xlsx_policy_data,
             "analyses": {
-                "Presence": {"sheet_name": "Figure 1 - transposed rounded",
-                              "column":"Sum"},
-                "Checklist": {"sheet_name": "Figure 2 - Tuples",
-                               "column": "Overall measurability and evidency consistency (maximum /57)"},
+                "Presence": {
+                    "sheet_name": "Figure 1 - transposed rounded",
+                    "column": "Sum",
+                },
+                "Checklist": {
+                    "sheet_name": "Figure 2 - Tuples",
+                    "column": "Overall measurability and evidency consistency (maximum /57)",
+                },
                 "PT": {"sheet_name": "Figure 2 - Tuples"},
                 "POS": {"sheet_name": "Figure 2 - Tuples"},
             },
@@ -225,6 +232,8 @@ if __name__ == "__main__":
                     lambda x: x.str.split(":"), axis=1
                 )
 
+        walkability_stats = pd.read_csv(csv_walkability_data, index_col="City")
+
         # Loop over cities
         successful = 0
         for city in cities:
@@ -243,6 +252,10 @@ if __name__ == "__main__":
                         city_policy[f"{policy_analysis}_global"] = df_policy[
                             f"{policy_analysis}_rating"
                         ].describe()
+
+                threshold_scenarios["walkability"] = walkability_stats.loc[
+                    city, "pct_walkability_above_median"
+                ]
 
                 # Generate resources
                 if config.generate_resources:

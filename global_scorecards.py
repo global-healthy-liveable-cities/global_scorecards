@@ -104,7 +104,13 @@ if __name__ == "__main__":
     else:
         languages = pd.Series([all_cities], index=[config.language])
 
-    for language in languages.index:
+    # if non-default language is specified along with auto_language, only prepare cities for that language
+    if config.language != "English":
+        language_list = [config.language]
+    else:
+        language_list = languages.index
+
+    for language in language_list:
         print(f"\n{language} language reports:")
         cities = languages[language]
         # set up fonts

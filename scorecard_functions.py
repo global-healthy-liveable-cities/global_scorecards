@@ -701,6 +701,7 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
+    template["title_city"] = f"{city_name}, {country_name}"
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     ## Walkability plot
@@ -751,6 +752,7 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
+    template["title_city"] = f"{city_name}, {country_name}"
 
     ## Density plots
     template[
@@ -778,6 +780,7 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["4"])
+    template["title_city"] = f"{city_name}, {country_name}"
     template[
         "pct_access_500m_pt.jpg"
     ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"

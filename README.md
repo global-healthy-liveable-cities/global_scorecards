@@ -4,15 +4,14 @@ The code in this repository draws on results from the [Global Healthy and Sustai
 
 The respository is ideally located as a subfolder of the study's spatial components repository, located within the [analysis](https://github.com/global-healthy-liveable-cities/global-indicators/tree/main/analysis) folder.
 
-The input data required are described in the global_scorecards.py file; this data may be awaiting publication to be made public, and is not located in this nor the spatial repository at this stage:
+The input data required are described in the global_scorecards.py file; some of this data may be awaiting publication to be made public, however others are located in our project's [data repository](https://rmit.figshare.com/articles/dataset/Global_Healthy_and_Sustainable_City_Indicator_Study_Collaboration_-_25_Cities_spatial_indicators_datasets/15072009):
 
 ```
-gpkg_hexes = os.path.abspath('../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg')
-csv_city_indicators = os.path.abspath("../../process/data/output/global_indicators_city_2021-06-21.csv")
-csv_hex_indicators = os.path.abspath("../../process/data/output/global_indicators_hex_250m_2021-06-21.csv")
-csv_thresholds_data = os.path.abspath("data/Global Indicators 2020 - thresholds summary estimates.csv")
-xlsx_policy_data = os.path.abspath("data/Policy Figures 1 & 2_23 Dec_numerical.xlsx")
-xlsx_scorecard_template = 'scorecard_template_elements.xlsx'
+"../../process/data/output/global_indicators_city_2021-06-21.csv"
+"../../process/data/output/global_indicators_hex_250m_2021-06-21.csv"
+"data/Global Indicators 2020 - thresholds summary estimates.csv"
+"data/Global Indicators - 2021-06-21 - percentage of population - walkability_above_median.csv"
+"data/Policy Figures 1 & 2_23 Dec_numerical.xlsx"
 ```
 
 Python modules required for running the code include pandas, geopandas, and fpdf2 (for PDF generation).  A Dockerfile for building a Docker environment including the required modules to run the project (and more [^1]) are provided in the Docker folder.  The Docker image can be built from within the docker folder by executing `docker build -t carlhiggs/global_scorecards .`, and then from the base project directory of [Global Healthy and Sustainable Cities Indicator Collaboration Study](https://github.com/global-healthy-liveable-cities/global-indicators) running either of the following from command line:

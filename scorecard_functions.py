@@ -642,7 +642,21 @@ def generate_scorecard(
                     languages.loc[
                         languages["name"] == item["name"], language
                     ].values[0]
-                ).format(city=city_name, country=country_name, year=year)
+                ).format(
+                    city=city_name,
+                    country=country_name,
+                    year=year,
+                    citation_series=phrases["citation_series"],
+                    citation_doi=phrases["citation_doi"].format(
+                        city=city_name,
+                        country=country_name,
+                        language=vernacular,
+                    ),
+                    citation_population=phrases["citation_population"],
+                    citation_boundaries=phrases["citation_boundaries"],
+                    citation_features=phrases["citation_features"],
+                    citation_colour=phrases["citation_colour"],
+                )
 
     scorecard_path = f"scorecards/{language}"
     if not os.path.exists(scorecard_path):
@@ -804,23 +818,14 @@ def generate_scorecard(
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
+    template["suggested_citation"] = "{}: {}".format(
+        phrases["citation_word"],
+        phrases["citation_doi"].format(
+            city=city_name, country=country_name, language=vernacular
+        ),
+    )
     template["licence_image"] = "logos/by-nc.jpg"
-    template[
-        "1024px-RMIT_University_Logo.svg.png"
-    ] = "logos/1024px-RMIT_University_Logo.svg.png"
-    template[
-        "University_of_Melbourne.png"
-    ] = "logos/University_of_Melbourne.png"
-    # template["North_Carolina_State_University"] = f"logos/University_of_Melbourne.png"
-    # template["University_of_Southern_California"] = f"logos/University_of_Melbourne.png"
-    # template["Australian_Catholic_University"] = f"logos/University_of_Melbourne.png"
-    # template["University_of_Hong_Kong"] = f"logos/University_of_Melbourne.png"
-    # template["Auckland_University_of_Technology"] = f"logos/University_of_Melbourne.png"
-    # template["Northeastern_University"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    # template["University_of_California_San_Diego"] = f"logos/University_of_Melbourne.png"
-    # template["Washington_University_in_St._Louis"] = f"logos/1024px-RMIT_University_Logo.svg.png"
-    # template["University_of_Washington_Seattle"] = f"logos/University_of_Melbourne.png"
-
+    template["logos"] = "logos/GIS Logo Collection_Page_2.jpg"
     template.render()
 
     # Output scorecard pdf

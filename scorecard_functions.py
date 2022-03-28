@@ -75,7 +75,7 @@ def li_profile(
     )
     # Add dots to represent the mean gain
     comparison_text = "\n".join(
-        wrap(phrases["25 city comparison"], 25, break_long_words=False)
+        wrap(phrases["25 city comparison"], 17, break_long_words=False)
     )
     ax.scatter(
         ANGLES,
@@ -616,6 +616,7 @@ def generate_scorecard(
 
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
     phrases = json.loads(languages.set_index("name").to_json())[language]
+    # extract English language variables
     metadata_author = languages.loc[
         languages["name"] == "title_author", "English"
     ].values[0]
@@ -625,6 +626,10 @@ def generate_scorecard(
     metadata_title2 = languages.loc[
         languages["name"] == "title_series_line2", "English"
     ].values[0]
+    country = languages.loc[
+        languages["name"] == f"{city} - Country", "English"
+    ].values[0]
+    # restrict to specific language
     languages = languages.loc[
         languages["role"] == "template", ["name", language]
     ]
@@ -648,9 +653,7 @@ def generate_scorecard(
                     year=year,
                     citation_series=phrases["citation_series"],
                     citation_doi=phrases["citation_doi"].format(
-                        city=city_name,
-                        country=country_name,
-                        language=vernacular,
+                        city=city, country=country, language=vernacular,
                     ),
                     citation_population=phrases["citation_population"],
                     citation_boundaries=phrases["citation_boundaries"],
@@ -705,8 +708,8 @@ def generate_scorecard(
     template = FlexTemplate(pdf, elements=pages["1"])
     template["title_city"] = f"{city_name}, {country_name}"
     # template["title_year"] = f"{year}"
-    if os.path.exists(f"hero_images/{city}.jpg"):
-        template["hero_image"] = f"hero_images/{city}.jpg"
+    if os.path.exists(f"hero_images/{city}-1.jpg"):
+        template["hero_image"] = f"hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
 
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
@@ -734,22 +737,22 @@ def generate_scorecard(
     ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
     template["city_header"] = city_name
     ## City planning requirement presence (round 0.5 up to 1)
-    template["policy2_text1_response"] = policy_indicators[
+    template["policy_urban_text1_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][0])
     ]
-    template["policy2_text2_response"] = policy_indicators[
+    template["policy_urban_text2_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][1])
     ]
-    template["policy2_text3_response"] = policy_indicators[
+    template["policy_urban_text3_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][2])
     ]
-    template["policy2_text4_response"] = policy_indicators[
+    template["policy_urban_text4_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][3])
     ]
-    template["policy2_text5_response"] = policy_indicators[
+    template["policy_urban_text5_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][4])
     ]
-    template["policy2_text6_response"] = policy_indicators[
+    template["policy_urban_text6_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][5])
     ]
 
@@ -818,14 +821,24 @@ def generate_scorecard(
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
+    template["citations"] = template["citations"].replace(" | ", "\n\n")
+    template["study_executive_names"] = languages.loc[
+        languages["name"] == "Credits - Study Executive", language
+    ].values[0]
+    template["local_collaborators_names"] = languages.loc[
+        languages["name"] == f"Credits - {country}", language
+    ].values[0]
+    if str(template["translation_names"]) == "nan":
+        template["translation"] = ""
+        template["translation_names"] = ""
+
     template["suggested_citation"] = "{}: {}".format(
         phrases["citation_word"],
         phrases["citation_doi"].format(
-            city=city_name, country=country_name, language=vernacular
+            city=city, country=country, language=vernacular
         ),
     )
     template["licence_image"] = "logos/by-nc.jpg"
-    template["logos"] = "logos/GIS Logo Collection_Page_2.jpg"
     template.render()
 
     # Output scorecard pdf

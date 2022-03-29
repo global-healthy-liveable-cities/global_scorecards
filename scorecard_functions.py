@@ -826,7 +826,7 @@ def generate_scorecard(
         languages["name"] == "Credits - Study Executive", language
     ].values[0]
     template["local_collaborators_names"] = languages.loc[
-        languages["name"] == f"Credits - {country}", language
+        languages["name"] == f"Credits - {city}", language
     ].values[0]
     if str(template["translation_names"]) == "nan":
         template["translation"] = ""

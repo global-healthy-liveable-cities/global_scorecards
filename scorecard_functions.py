@@ -85,7 +85,7 @@ def li_profile(
         zorder=11,
         label=comparison_text,
     )
-    # Add labels for the regions
+    # Add labels for the indicators
     try:
         LABELS = [
             "\n".join(wrap(r, 10, break_long_words=False)) for r in INDICATORS
@@ -121,7 +121,7 @@ def li_profile(
     ax.text(
         ANGLES[0],
         -50,
-        title,
+        "\n".join(wrap(title, 13, break_long_words=False)),
         rotation=0,
         ha="center",
         va="center",
@@ -167,7 +167,10 @@ def spatial_dist_map(
         legend=True,
         vmin=range[0],
         vmax=range[1],
-        legend_kwds={"label": label, "orientation": "horizontal"},
+        legend_kwds={
+            "label": "\n".join(wrap(label, 60, break_long_words=False)),
+            "orientation": "horizontal",
+        },
         cax=cax,
         cmap=cmap,
     )
@@ -238,7 +241,10 @@ def threshold_map(
         column=column,
         ax=ax,
         legend=True,
-        legend_kwds={"label": label, "orientation": "horizontal"},
+        legend_kwds={
+            "label": "\n".join(wrap(label, 60, break_long_words=False)),
+            "orientation": "horizontal",
+        },
         cax=cax,
         cmap=cmap,
     )
@@ -615,6 +621,8 @@ def generate_scorecard(
         os.mkdir("scorecards")
 
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
+    credits = pd.read_excel(xlsx_scorecard_template, sheet_name="credits")
+    credits = json.loads(credits.set_index("City").to_json())
     phrases = json.loads(languages.set_index("name").to_json())[language]
     # extract English language variables
     metadata_author = languages.loc[
@@ -711,6 +719,7 @@ def generate_scorecard(
     if os.path.exists(f"hero_images/{city}-1.jpg"):
         template["hero_image"] = f"hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
+        template["hero_credit"] = credits["Image 1 Credit"][city]
 
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template.render()
@@ -791,6 +800,7 @@ def generate_scorecard(
     if os.path.exists(f"hero_images/{city}-2.jpg"):
         template["hero_image_2"] = f"hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""
+        template["hero_credit"] = credits["Image 2 Credit"][city]
 
     template.render()
 
@@ -822,12 +832,8 @@ def generate_scorecard(
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
     template["citations"] = template["citations"].replace(" | ", "\n\n")
-    template["study_executive_names"] = languages.loc[
-        languages["name"] == "Credits - Study Executive", language
-    ].values[0]
-    template["local_collaborators_names"] = languages.loc[
-        languages["name"] == f"Credits - {city}", language
-    ].values[0]
+    template["study_executive_names"] = credits["Names"]["Study Executive"]
+    template["local_collaborators_names"] = credits["Names"][city]
     if str(template["translation_names"]) == "nan":
         template["translation"] = ""
         template["translation_names"] = ""

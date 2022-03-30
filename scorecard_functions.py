@@ -149,6 +149,7 @@ def spatial_dist_map(
     width=fpdf2_mm_scale(88),
     height=fpdf2_mm_scale(80),
     dpi=300,
+    phrases={"north arrow": "N", "km": "km"},
 ):
     """
     Spatial distribution maps using geopandas geodataframe
@@ -168,7 +169,9 @@ def spatial_dist_map(
         vmin=range[0],
         vmax=range[1],
         legend_kwds={
-            "label": "\n".join(wrap(label, 60, break_long_words=False)),
+            "label": "\n".join(wrap(label, 60, break_long_words=False))
+            if label.find("\n") < 0
+            else label,
             "orientation": "horizontal",
         },
         cax=cax,
@@ -183,7 +186,7 @@ def spatial_dist_map(
     scalebar = AnchoredSizeBar(
         ax.transData,
         scalebar_length * 1000,
-        f"{scalebar_length} km",
+        f"{scalebar_length}{phrases['km']}",
         "upper left",
         pad=0,
         color="black",
@@ -194,7 +197,7 @@ def spatial_dist_map(
     ax.add_artist(scalebar)
     x, y, arrow_length = 1, 1, 0.06
     ax.annotate(
-        "N",
+        f"{phrases['north arrow']}",
         xy=(x, y),
         xytext=(x, y - arrow_length),
         arrowprops=dict(facecolor="black", width=4, headwidth=8),
@@ -228,6 +231,7 @@ def threshold_map(
     width=fpdf2_mm_scale(88),
     height=fpdf2_mm_scale(80),
     dpi=300,
+    phrases={"north arrow": "N", "km": "km"},
 ):
     figsize = (width, height)
     textsize = 14
@@ -242,7 +246,9 @@ def threshold_map(
         ax=ax,
         legend=True,
         legend_kwds={
-            "label": "\n".join(wrap(label, 60, break_long_words=False)),
+            "label": "\n".join(wrap(label, 60, break_long_words=False))
+            if label.find("\n") < 0
+            else label,
             "orientation": "horizontal",
         },
         cax=cax,
@@ -257,7 +263,7 @@ def threshold_map(
     scalebar = AnchoredSizeBar(
         ax.transData,
         scalebar_length * 1000,
-        f"{scalebar_length} km",
+        f"{scalebar_length}{phrases['km']}",
         "upper left",
         pad=0,
         color="black",
@@ -268,7 +274,7 @@ def threshold_map(
     ax.add_artist(scalebar)
     x, y, arrow_length = 1, 1, 0.06
     ax.annotate(
-        "N",
+        f"{phrases['north arrow']}",
         xy=(x, y),
         xytext=(x, y - arrow_length),
         arrowprops=dict(facecolor="black", width=4, headwidth=8),
@@ -519,6 +525,7 @@ def generate_resources(
             tick_labels=f["tick_labels"],
             cmap=cmap,
             path=f["outfile"],
+            phrases=phrases,
         )
     # Threshold maps
     for row in threshold_scenarios["data"].index:
@@ -532,6 +539,7 @@ def generate_resources(
             ),
             cmap=cmap,
             path=f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg",
+            phrases=phrases,
         )
 
     # Policy ratings
@@ -714,7 +722,6 @@ def generate_scorecard(
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
-    template["title_city"] = f"{city_name}, {country_name}"
     # template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}-1.jpg"):
         template["hero_image"] = f"hero_images/{city}-1.jpg"
@@ -722,12 +729,12 @@ def generate_scorecard(
         template["hero_credit"] = credits["Image 1 Credit"][city]
 
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
+    template["cover_logo"] = "logos/GOHSC.jpg"
     template.render()
 
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
-    template["title_city"] = f"{city_name}, {country_name}"
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     ## Walkability plot
@@ -778,8 +785,6 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
-    template["title_city"] = f"{city_name}, {country_name}"
-
     ## Density plots
     template[
         "local_nh_population_density"
@@ -807,7 +812,6 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["4"])
-    template["title_city"] = f"{city_name}, {country_name}"
     template[
         "pct_access_500m_pt.jpg"
     ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"

@@ -24,6 +24,37 @@ def fpdf2_mm_scale(mm):
     return 2 * mm / 25.4
 
 
+def add_localised_north_arrow(
+    ax,
+    text="N",
+    xy=(1, 0.96),
+    textsize=14,
+    arrowprops=dict(facecolor="black", width=4, headwidth=8),
+):
+    """
+    Add a minimal north arrow with custom text label (eg 'N' or other language equivalent) above it
+    to a matplotlib map.  Default placement is in upper right corner of map.
+    """
+    arrow = ax.annotate(
+        "",
+        xy=(1, 0.96),
+        xycoords=ax.transAxes,
+        xytext=(0, -0.5),
+        textcoords="offset pixels",
+        va="center",
+        ha="center",
+        arrowprops=arrowprops,
+    )
+    ax.annotate(
+        text,
+        xy=(0.5, 1.5),
+        xycoords=arrow,
+        va="center",
+        ha="center",
+        fontsize=textsize,
+    )
+
+
 ## radar chart
 def li_profile(
     city_stats,
@@ -195,17 +226,10 @@ def spatial_dist_map(
         fontproperties=fm.FontProperties(size=textsize),
     )
     ax.add_artist(scalebar)
-    x, y, arrow_length = 1, 1, 0.06
-    ax.annotate(
-        f"{phrases['north arrow']}",
-        xy=(x, y),
-        xytext=(x, y - arrow_length),
-        arrowprops=dict(facecolor="black", width=4, headwidth=8),
-        ha="center",
-        va="center",
-        fontsize=textsize,
-        xycoords=ax.transAxes,
-    )
+    # north arrow
+    add_localised_north_arrow(ax, text=phrases["north arrow"])
+
+    # axis formatting
     cax.tick_params(labelsize=textsize)
     cax.xaxis.label.set_size(textsize)
     if tick_labels is not None:
@@ -272,17 +296,10 @@ def threshold_map(
         fontproperties=fm.FontProperties(size=textsize),
     )
     ax.add_artist(scalebar)
-    x, y, arrow_length = 1, 1, 0.06
-    ax.annotate(
-        f"{phrases['north arrow']}",
-        xy=(x, y),
-        xytext=(x, y - arrow_length),
-        arrowprops=dict(facecolor="black", width=4, headwidth=8),
-        ha="center",
-        va="center",
-        fontsize=textsize,
-        xycoords=ax.transAxes,
-    )
+    # north arrow
+    add_localised_north_arrow(ax, text=phrases["north arrow"])
+
+    # axis formatting
     cax.xaxis.set_major_formatter(ticker.EngFormatter())
     cax.tick_params(labelsize=textsize)
     cax.xaxis.label.set_size(textsize)

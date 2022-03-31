@@ -24,6 +24,40 @@ def fpdf2_mm_scale(mm):
     return 2 * mm / 25.4
 
 
+def add_scalebar(
+    ax,
+    length,
+    units,
+    fontproperties,
+    loc="upper left",
+    pad=0,
+    color="black",
+    frameon=False,
+    size_vertical=2,
+):
+    """
+    Adds a scalebar to matplotlib map.
+    Requires import of: from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+    As a rule of thumb, a scalebar of 1/3 of feature size seems appropriate.
+    For example, to achieve this, calculate the variable 'length' as
+
+        gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
+        scalebar_length = int(gdf_width / (3000))
+    """
+    scalebar = AnchoredSizeBar(
+        ax.transData,
+        length,
+        units,
+        loc=loc,
+        pad=pad,
+        color=color,
+        frameon=frameon,
+        size_vertical=size_vertical,
+        fontproperties=fontproperties,
+    )
+    ax.add_artist(scalebar)
+
+
 def add_localised_north_arrow(
     ax,
     text="N",
@@ -208,24 +242,17 @@ def spatial_dist_map(
         cax=cax,
         cmap=cmap,
     )
+
+    # scalebar
     gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
-    # cities vary in scale, but in general
-    # a scalebar no bigger than 1/3 of the city is ideally
-    # so is rounding to nearest thousand (ie. units of km)
-    # and I think the following expression meets these goals
     scalebar_length = int(gdf_width / (3000))
-    scalebar = AnchoredSizeBar(
-        ax.transData,
-        scalebar_length * 1000,
-        f"{scalebar_length}{phrases['km']}",
-        "upper left",
-        pad=0,
-        color="black",
-        frameon=False,
-        size_vertical=2,
+    add_scalebar(
+        ax,
+        length=scalebar_length * 1000,
+        units=f"{scalebar_length}{phrases['km']}",
         fontproperties=fm.FontProperties(size=textsize),
     )
-    ax.add_artist(scalebar)
+
     # north arrow
     add_localised_north_arrow(ax, text=phrases["north arrow"])
 
@@ -278,24 +305,17 @@ def threshold_map(
         cax=cax,
         cmap=cmap,
     )
+
+    # scalebar
     gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
-    # cities vary in scale, but in general
-    # a scalebar no bigger than 1/3 of the city is ideally
-    # so is rounding to nearest thousand (ie. units of km)
-    # and I think the following expression meets these goals
     scalebar_length = int(gdf_width / (3000))
-    scalebar = AnchoredSizeBar(
-        ax.transData,
-        scalebar_length * 1000,
-        f"{scalebar_length}{phrases['km']}",
-        "upper left",
-        pad=0,
-        color="black",
-        frameon=False,
-        size_vertical=2,
+    add_scalebar(
+        ax,
+        length=scalebar_length * 1000,
+        units=f"{scalebar_length}{phrases['km']}",
         fontproperties=fm.FontProperties(size=textsize),
     )
-    ax.add_artist(scalebar)
+
     # north arrow
     add_localised_north_arrow(ax, text=phrases["north arrow"])
 

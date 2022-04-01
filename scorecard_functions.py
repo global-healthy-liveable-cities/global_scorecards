@@ -700,26 +700,16 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
     phrases["country_name"] = languages.loc[
         languages["name"] == f"{city} - Country", language
     ].values[0]
+    phrases["city"] = city
     phrases["study_doi"] = city_details["DOI"]["Study"]
     phrases["city_doi"] = city_details["DOI"][city]
-    phrases["citation_doi"] = phrases["citation_doi"].format(
-        city=city,
-        country=phrases["country"],
-        language=phrases["vernacular"],
-        city_doi=phrases["city_doi"],
-    )
     phrases["study_executive_names"] = city_details["Names"]["Study"]
     phrases["local_collaborators_names"] = city_details["Names"][city]
     phrases["credit_image1"] = city_details["credit_image1"][city]
     phrases["credit_image2"] = city_details["credit_image2"][city]
-    phrases["suggested_citation"] = "{}: {}".format(
-        phrases["citation_word"],
-        phrases["citation_doi"].format(
-            city=city,
-            country=phrases["country"],
-            language=phrases["vernacular"],
-        ),
-    )
+    # incoporating study citations
+    citation_json = json.loads(city_details["exceptions_json"]["Study"])
+
     # handle city-specific exceptions
     city_exceptions = json.loads(city_details["exceptions_json"][city])
     if language in city_exceptions:
@@ -728,6 +718,20 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         )
         for e in city_exceptions:
             phrases[e] = city_exceptions[e]
+
+    for citation in citation_json:
+        phrases[citation] = (
+            citation_json[citation].replace("|", "\n").format(**phrases)
+        )
+
+    phrases["suggested_citation"] = "{}: {}".format(
+        phrases["citation_word"],
+        phrases["citation_doi"].format(
+            city=city,
+            country=phrases["country"],
+            language=phrases["vernacular"],
+        ),
+    )
 
     return phrases
 
@@ -910,12 +914,12 @@ def generate_scorecard(
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
-    template["citations"] = template["citations"].replace(" | ", "\n\n")
+    template["citations"] = phrases["citations"]
     template["study_executive_names"] = phrases["study_executive_names"]
     template["local_collaborators_names"] = phrases[
         "local_collaborators_names"
     ]
-    if str(template["translation_names"]) == "nan":
+    if phrases["translation_names"] is None:
         template["translation"] = ""
         template["translation_names"] = ""
 

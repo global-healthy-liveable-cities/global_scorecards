@@ -669,11 +669,11 @@ def format_pages(pages, phrases):
 
 def prepare_phrases(xlsx_scorecard_template, city, language):
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
+    phrases = json.loads(languages.set_index("name").to_json())[language]
     city_details = pd.read_excel(
         xlsx_scorecard_template, sheet_name="city_details"
     )
     city_details = json.loads(city_details.set_index("City").to_json())
-    phrases = json.loads(languages.set_index("name").to_json())[language]
     # extract English language variables
     phrases["metadata_author"] = languages.loc[
         languages["name"] == "title_author", "English"
@@ -720,6 +720,15 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
             language=phrases["vernacular"],
         ),
     )
+    # handle city-specific exceptions
+    city_exceptions = json.loads(city_details["exceptions_json"][city])
+    if language in city_exceptions:
+        city_exceptions = json.loads(
+            city_exceptions[language].replace("'", '"')
+        )
+        for e in city_exceptions:
+            phrases[e] = city_exceptions[e]
+
     return phrases
 
 

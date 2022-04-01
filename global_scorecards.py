@@ -278,21 +278,14 @@ if __name__ == "__main__":
                         cmap,
                     )
 
-                # Generate PDF reports for cities
-                pages = scorecard_functions.pdf_template_setup(
-                    xlsx_scorecard_template, font=font
-                )
-
                 # instantiate template
-
                 scorecard_functions.generate_scorecard(
                     city,
-                    year,
-                    pages,
                     threshold_scenarios=threshold_scenarios,
                     city_policy=city_policy,
                     xlsx_scorecard_template=xlsx_scorecard_template,
                     language=language,
+                    font=font,
                 )
                 successful += 1
             except Exception as e:

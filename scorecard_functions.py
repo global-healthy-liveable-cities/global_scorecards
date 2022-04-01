@@ -612,7 +612,6 @@ def pdf_template_setup(
       - can define the page for which template elements are to be applied
       - colours are specified using standard hexadecimal codes
     Any blank cells are set to represent "None".
-
     The function returns a dictionary of elements, indexed by page number strings.
     """
     # read in elements
@@ -643,28 +642,32 @@ def pdf_template_setup(
     pages = {}
     for page in document_pages:
         pages[f"{page}"] = [x for x in elements if x["page"] == page]
+
     return pages
 
 
-def generate_scorecard(
-    city,
-    year,
-    pages,
-    city_policy,
-    threshold_scenarios,
-    xlsx_scorecard_template,
-    language="English",
-    template_sheet="scorecard_template_elements",
-):
-    """
-    Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
+def format_pages(pages, phrases):
+    for page in pages:
+        for i, item in enumerate(pages[page]):
+            if item["name"] in phrases:
+                try:
+                    pages[page][i]["text"] = phrases[item["name"]].format(
+                        city=phrases["city_name"],
+                        country=phrases["country_name"],
+                        study_doi=phrases["study_doi"],
+                        citation_series=phrases["citation_series"],
+                        citation_doi=phrases["citation_doi"],
+                        citation_population=phrases["citation_population"],
+                        citation_boundaries=phrases["citation_boundaries"],
+                        citation_features=phrases["citation_features"],
+                        citation_colour=phrases["citation_colour"],
+                    )
+                except Exception:
+                    pages[f"{page}"][i]["text"] = phrases[item["name"]]
+    return pages
 
-    Included in this function is the marking of a policy 'scorecard', with ticks, crosses, etc.
-    """
-    # replace placeholder language with specific language, if specified
-    if not os.path.exists("scorecards"):
-        os.mkdir("scorecards")
 
+def prepare_phrases(xlsx_scorecard_template, city, language):
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
     city_details = pd.read_excel(
         xlsx_scorecard_template, sheet_name="city_details"
@@ -672,58 +675,55 @@ def generate_scorecard(
     city_details = json.loads(city_details.set_index("City").to_json())
     phrases = json.loads(languages.set_index("name").to_json())[language]
     # extract English language variables
-    metadata_author = languages.loc[
+    phrases["metadata_author"] = languages.loc[
         languages["name"] == "title_author", "English"
     ].values[0]
-    metadata_title1 = languages.loc[
+    phrases["metadata_title1"] = languages.loc[
         languages["name"] == "title_series_line1", "English"
     ].values[0]
-    metadata_title2 = languages.loc[
+    phrases["metadata_title2"] = languages.loc[
         languages["name"] == "title_series_line2", "English"
     ].values[0]
-    country = languages.loc[
+    phrases["country"] = languages.loc[
         languages["name"] == f"{city} - Country", "English"
     ].values[0]
     # restrict to specific language
     languages = languages.loc[
         languages["role"] == "template", ["name", language]
     ]
-    vernacular = languages.loc[
+    phrases["vernacular"] = languages.loc[
         languages["name"] == "language", language
     ].values[0]
-    city_name = languages.loc[languages["name"] == city, language].values[0]
-    country_name = languages.loc[
+    phrases["city_name"] = languages.loc[
+        languages["name"] == city, language
+    ].values[0]
+    phrases["country_name"] = languages.loc[
         languages["name"] == f"{city} - Country", language
     ].values[0]
-    for p in pages:
-        for i, item in enumerate(pages[p]):
-            if item["name"] in languages.name.values:
-                pages[p][i]["text"] = str(
-                    languages.loc[
-                        languages["name"] == item["name"], language
-                    ].values[0]
-                ).format(
-                    city=city_name,
-                    country=country_name,
-                    year=year,
-                    study_doi=city_details["DOI"]["Study"],
-                    citation_series=phrases["citation_series"],
-                    citation_doi=phrases["citation_doi"].format(
-                        city=city, country=country, language=vernacular,
-                    ),
-                    citation_population=phrases["citation_population"],
-                    citation_boundaries=phrases["citation_boundaries"],
-                    citation_features=phrases["citation_features"],
-                    citation_colour=phrases["citation_colour"],
-                )
+    phrases["study_doi"] = city_details["DOI"]["Study"]
+    phrases["city_doi"] = city_details["DOI"][city]
+    phrases["citation_doi"] = phrases["citation_doi"].format(
+        city=city,
+        country=phrases["country"],
+        language=phrases["vernacular"],
+        city_doi=phrases["city_doi"],
+    )
+    phrases["study_executive_names"] = city_details["Names"]["Study"]
+    phrases["local_collaborators_names"] = city_details["Names"][city]
+    phrases["credit_image1"] = city_details["credit_image1"][city]
+    phrases["credit_image2"] = city_details["credit_image2"][city]
+    phrases["suggested_citation"] = "{}: {}".format(
+        phrases["citation_word"],
+        phrases["citation_doi"].format(
+            city=city,
+            country=phrases["country"],
+            language=phrases["vernacular"],
+        ),
+    )
+    return phrases
 
-    scorecard_path = f"scorecards/{language}"
-    if not os.path.exists(scorecard_path):
-        os.mkdir(scorecard_path)
 
-    policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
-    pdf = FPDF(orientation="portrait", format="A4")
-
+def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):
     fonts = pd.read_excel(xlsx_scorecard_template, sheet_name="fonts")
     fonts = (
         fonts.loc[
@@ -755,18 +755,45 @@ def generate_scorecard(
                         uni=True,
                     )
 
-    pdf.set_author(metadata_author)
-    pdf.set_title(f"{metadata_title1} {metadata_title2}")
+
+def generate_scorecard(
+    city,
+    city_policy,
+    threshold_scenarios,
+    xlsx_scorecard_template,
+    language="English",
+    template_sheet="scorecard_template_elements",
+    font=None,
+):
+    """
+    Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
+
+    Included in this function is the marking of a policy 'scorecard', with ticks, crosses, etc.
+    """
+    # set up phrases
+    phrases = prepare_phrases(xlsx_scorecard_template, city, language)
+
+    # Set up PDF document template pages
+    pages = pdf_template_setup(xlsx_scorecard_template, font=font)
+    pages = format_pages(pages, phrases)
+
+    # initialise PDF
+    pdf = FPDF(orientation="portrait", format="A4")
+
+    # set up fonts
+    prepare_pdf_fonts(pdf, xlsx_scorecard_template, language)
+
+    pdf.set_author(phrases["metadata_author"])
+    pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
 
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
-    # template["title_year"] = f"{year}"
     if os.path.exists(f"hero_images/{city}-1.jpg"):
         template["hero_image"] = f"hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
-        template["hero_credit"] = city_details["Image 1 Credit"][city]
+        template["credit_image1"] = phrases["credit_image1"]
 
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template["cover_logo"] = "logos/GOHSC.jpg"
@@ -791,8 +818,9 @@ def generate_scorecard(
     template[
         "quality_rating"
     ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
-    template["city_header"] = city_name
+    template["city_header"] = phrases["city_name"]
     ## City planning requirement presence (round 0.5 up to 1)
+    policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
     template["policy_urban_text1_response"] = policy_indicators[
         np.ceil(city_policy["Presence"][0])
     ]
@@ -845,7 +873,7 @@ def generate_scorecard(
     if os.path.exists(f"hero_images/{city}-2.jpg"):
         template["hero_image_2"] = f"hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""
-        template["hero_credit"] = city_details["Image 2 Credit"][city]
+        template["credit_image2"] = phrases["credit_image2"]
 
     template.render()
 
@@ -858,9 +886,7 @@ def generate_scorecard(
     template[
         "pct_access_500m_public_open_space_large_score"
     ] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
-    template[
-        "city_text"
-    ] = f"{languages.loc[languages['name']==f'{city} - Summary',language].values[0]}"
+    template["city_text"] = phrases[f"{city} - Summary"]
 
     ## Checklist ratings for PT and POS
     for analysis in ["PT", "POS"]:
@@ -876,23 +902,25 @@ def generate_scorecard(
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
     template["citations"] = template["citations"].replace(" | ", "\n\n")
-    template["study_executive_names"] = city_details["Names"]["Study"]
-    template["local_collaborators_names"] = city_details["Names"][city]
+    template["study_executive_names"] = phrases["study_executive_names"]
+    template["local_collaborators_names"] = phrases[
+        "local_collaborators_names"
+    ]
     if str(template["translation_names"]) == "nan":
         template["translation"] = ""
         template["translation_names"] = ""
 
-    template["suggested_citation"] = "{}: {}".format(
-        phrases["citation_word"],
-        phrases["citation_doi"].format(
-            city=city, country=country, language=vernacular
-        ),
-    )
+    template["suggested_citation"] = phrases["suggested_citation"]
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 
     # Output scorecard pdf
+    if not os.path.exists("scorecards"):
+        os.mkdir("scorecards")
+    scorecard_path = f"scorecards/{language}"
+    if not os.path.exists(scorecard_path):
+        os.mkdir(scorecard_path)
     pdf.output(
-        f"{scorecard_path}/{city_name} - {languages.loc[languages['name']=='title_series_line1',language].values[0].replace(':','')} - GHSCIC 2022 - {vernacular}.pdf"
+        f"{scorecard_path}/{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
     )
     return f"Scorecard generated: {scorecard_path}/scorecard_{city}.pdf"

@@ -666,8 +666,10 @@ def generate_scorecard(
         os.mkdir("scorecards")
 
     languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
-    credits = pd.read_excel(xlsx_scorecard_template, sheet_name="credits")
-    credits = json.loads(credits.set_index("City").to_json())
+    city_details = pd.read_excel(
+        xlsx_scorecard_template, sheet_name="city_details"
+    )
+    city_details = json.loads(city_details.set_index("City").to_json())
     phrases = json.loads(languages.set_index("name").to_json())[language]
     # extract English language variables
     metadata_author = languages.loc[
@@ -704,6 +706,7 @@ def generate_scorecard(
                     city=city_name,
                     country=country_name,
                     year=year,
+                    study_doi=city_details["DOI"]["Study"],
                     citation_series=phrases["citation_series"],
                     citation_doi=phrases["citation_doi"].format(
                         city=city, country=country, language=vernacular,
@@ -763,7 +766,7 @@ def generate_scorecard(
     if os.path.exists(f"hero_images/{city}-1.jpg"):
         template["hero_image"] = f"hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
-        template["hero_credit"] = credits["Image 1 Credit"][city]
+        template["hero_credit"] = city_details["Image 1 Credit"][city]
 
     template["cover_image"] = "hero_images/cover_background - alt-01.png"
     template["cover_logo"] = "logos/GOHSC.jpg"
@@ -842,7 +845,7 @@ def generate_scorecard(
     if os.path.exists(f"hero_images/{city}-2.jpg"):
         template["hero_image_2"] = f"hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""
-        template["hero_credit"] = credits["Image 2 Credit"][city]
+        template["hero_credit"] = city_details["Image 2 Credit"][city]
 
     template.render()
 
@@ -873,8 +876,8 @@ def generate_scorecard(
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
     template["citations"] = template["citations"].replace(" | ", "\n\n")
-    template["study_executive_names"] = credits["Names"]["Study Executive"]
-    template["local_collaborators_names"] = credits["Names"][city]
+    template["study_executive_names"] = city_details["Names"]["Study"]
+    template["local_collaborators_names"] = city_details["Names"][city]
     if str(template["translation_names"]) == "nan":
         template["translation"] = ""
         template["translation_names"] = ""

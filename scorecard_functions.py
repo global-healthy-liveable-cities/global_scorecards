@@ -464,16 +464,19 @@ def generate_resources(
     The function prepares a series of image resources required for the global
     indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
     """
-    city_path = f"./cities/{city}"
-    if not os.path.exists("cities"):
-        os.mkdir("cities")
-    if not os.path.exists(city_path):
-        os.mkdir(city_path)
+    phrases = prepare_phrases(xlsx_scorecard_template, city, language)
     # read city data
     gdf = gpd.read_file(gpkg_hexes, layer=city.lower().replace(" ", "_"))
     gdf["all_cities_walkability"] = gdf["all_cities_walkability"].apply(
         lambda x: -6 if x < -6 else (6 if x > 6 else x)
     )
+    # create output directory for plots
+    city_path = f"./cities/{city}"
+    if not os.path.exists("cities"):
+        os.mkdir("cities")
+    if not os.path.exists(city_path):
+        os.mkdir(city_path)
+
     # Spatial access liveability profile
     city_stats = {}
     city_stats["access"] = df.loc[city, indicators]
@@ -485,9 +488,6 @@ def generate_resources(
             ] = f"{city_stats['access'].index[i]} (not evaluated)"
 
     city_stats["access"].index = city_stats_index
-    languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
-    languages = languages.loc[languages["role"] == "plot", ["name", language]]
-    phrases = json.loads(languages.set_index("name").to_json())[language]
     city_stats["access"].index = [
         phrases[x] for x in city_stats["access"].index
     ]
@@ -717,7 +717,7 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
             city_exceptions[language].replace("'", '"')
         )
         for e in city_exceptions:
-            phrases[e] = city_exceptions[e]
+            phrases[e] = city_exceptions[e].replace("|", "\n")
 
     for citation in citation_json:
         phrases[citation] = (

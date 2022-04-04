@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import pythainlp
 from fpdf import FPDF, FlexTemplate
 from matplotlib.cm import ScalarMappable
 from matplotlib.lines import Line2D

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+import pythainlp
 from fpdf import FPDF, FlexTemplate
 from matplotlib.cm import ScalarMappable
 from matplotlib.lines import Line2D
@@ -733,7 +734,47 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         ),
     )
 
+    # if language=='Thai':
+    # for phrase in phrases:
+    # phrases[phrase] = thaiwrap(phrases,wrap=False,delimiter=' ')
+
     return phrases
+
+
+# def thai_wrap(text, wrap=True, len=50, engine="newmm", delimiter="\u200a"):
+# """
+# This function uses the pythainlp package to identify word boundaries in Thai prose, allowing subsequent joining of words
+# """
+# words = word_tokenize(text, engine="newmm")
+# if wrap:
+# return "\n".join(wrap_sentences(words, limit=len))
+# else:
+# return "\u200a".join(words)
+
+
+def wrap_sentences(words, limit=50, delimiter=""):
+    sentences = []
+    sentence = ""
+    gap = len(delimiter)
+    for i, word in enumerate(words):
+        if i == 0:
+            sentence = word
+            continue
+        # combine word to sentence if under limit
+        if len(sentence) + gap + len(word) <= limit:
+            sentence = sentence + delimiter + word
+        else:
+            sentences.append(sentence)
+            sentence = word
+            # append the final word if not yet appended
+            if i == len(words) - 1:
+                sentences.append(sentence)
+
+        # finally, append sentence of all words if still below limit
+        if (i == len(words) - 1) and (sentences == []):
+            sentences.append(sentence)
+
+    return sentences
 
 
 def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):

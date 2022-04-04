@@ -114,7 +114,7 @@ def li_profile(
     figsize = (width, height)
     # Values for the x axis
     ANGLES = np.linspace(
-        0.05, 2 * np.pi - 0.05, len(city_stats), endpoint=False
+        0.15, 2 * np.pi - 0.05, len(city_stats), endpoint=False
     )
     VALUES = city_stats.values
     COMPARISON = comparisons["p50"].values
@@ -124,7 +124,7 @@ def li_profile(
     norm = mpl.colors.Normalize(vmin=0, vmax=100)
     COLORS = cmap(list(norm(VALUES)))
     # Initialize layout in polar coordinates
-    textsize = 12
+    textsize = 11
     fig, ax = plt.subplots(figsize=figsize, subplot_kw={"projection": "polar"})
     # Set background color to white, both axis and figure.
     fig.patch.set_facecolor("white")
@@ -153,7 +153,7 @@ def li_profile(
     # Add labels for the indicators
     try:
         LABELS = [
-            "\n".join(wrap(r, 10, break_long_words=False)) for r in INDICATORS
+            "\n".join(wrap(r, 12, break_long_words=False)) for r in INDICATORS
         ]
     except Exception:
         LABELS = INDICATORS
@@ -176,10 +176,15 @@ def li_profile(
         tick.set_pad(10)
     # Add custom annotations -----------------------------------------
     # The following represent the heights in the values of the y axis
-    PAD = -2.3
+    PAD = 0
     for num in [0, 50, 100]:
         ax.text(
-            -0.2 * np.pi / 2, num + PAD, f"{num}", ha="center", size=textsize
+            -0.2 * np.pi / 2,
+            num + PAD,
+            f"{num}%",
+            ha="center",
+            va="center",
+            size=textsize,
         )
     # Add text to explain the meaning of the height of the bar and the
     # height of the dot

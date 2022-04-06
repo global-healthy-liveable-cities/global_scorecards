@@ -1,8 +1,8 @@
 ##############################################################################
-# Build an image from the dockerfile: 
+# Build an image from the dockerfile:
 # docker build -t carlhiggs/global_scorecards .
 #
-# Run bash in this container and export final conda environment to a yml file:
+# To run bash in this container:
 # FROM BASH:
 # docker run --rm -it --shm-size=2g --net=host -v "$PWD":/home/ghsi/work carlhiggs/global_scorecards /bin/bash
 # FROM CMD:
@@ -12,7 +12,7 @@
 # Build environment
 FROM continuumio/miniconda3:4.10.3-alpine as build
 
-USER $NB_UID 
+USER $NB_UID
 COPY environment.yml .
 
 # Install conda pack
@@ -36,9 +36,8 @@ RUN mkdir /env && \
     rm -rv /env.tar.gz && \
     /env/bin/python /env/bin/conda-unpack && \
     useradd -u 8877 ghsi
-    
+
 USER ghsi
 ENV PATH="/env/bin/:$PATH"
 
 WORKDIR /home/ghsi/work
-

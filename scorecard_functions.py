@@ -451,6 +451,7 @@ def policy_rating(
 
 def generate_resources(
     city,
+    phrases,
     gpkg_hexes,
     df,
     indicators,
@@ -465,7 +466,6 @@ def generate_resources(
     The function prepares a series of image resources required for the global
     indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
     """
-    phrases = prepare_phrases(xlsx_scorecard_template, city, language)
     locale = phrases["locale"]
     # read city data
     gdf = gpd.read_file(gpkg_hexes, layer=city.lower().replace(" ", "_"))
@@ -689,6 +689,10 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         xlsx_scorecard_template, sheet_name="city_details"
     )
     city_details = json.loads(city_details.set_index("City").to_json())
+    country_code = city_details["Country Code"][city]
+    if language == "English" and country_code not in ["AU", "GB", "US"]:
+        country_code = "AU"
+    phrases["locale"] = f'{phrases["language_code"]}_{country_code}'
     # extract English language variables
     phrases["metadata_author"] = languages.loc[
         languages["name"] == "title_author", "English"
@@ -818,6 +822,7 @@ def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):
 
 def generate_scorecard(
     city,
+    phrases,
     city_policy,
     threshold_scenarios,
     xlsx_scorecard_template,
@@ -830,8 +835,6 @@ def generate_scorecard(
 
     Included in this function is the marking of a policy 'scorecard', with ticks, crosses, etc.
     """
-    # set up phrases
-    phrases = prepare_phrases(xlsx_scorecard_template, city, language)
     locale = phrases["locale"]
     # Set up PDF document template pages
     pages = pdf_template_setup(

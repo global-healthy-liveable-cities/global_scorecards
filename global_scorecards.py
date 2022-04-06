@@ -262,11 +262,16 @@ if __name__ == "__main__":
                 threshold_scenarios["walkability"] = walkability_stats.loc[
                     city, "pct_walkability_above_median"
                 ]
+                # set up phrases
+                phrases = scorecard_functions.prepare_phrases(
+                    xlsx_scorecard_template, city, language
+                )
 
                 # Generate resources
                 if config.generate_resources:
                     scorecard_functions.generate_resources(
                         city,
+                        phrases,
                         gpkg_hexes,
                         df,
                         indicators,
@@ -281,6 +286,7 @@ if __name__ == "__main__":
                 # instantiate template
                 scorecard_functions.generate_scorecard(
                     city,
+                    phrases,
                     threshold_scenarios=threshold_scenarios,
                     city_policy=city_policy,
                     xlsx_scorecard_template=xlsx_scorecard_template,

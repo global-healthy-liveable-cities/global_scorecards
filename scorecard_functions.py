@@ -184,6 +184,7 @@ def li_profile(
             f"{num}%",
             ha="center",
             va="center",
+            backgroundcolor="white",
             size=textsize,
         )
     # Add text to explain the meaning of the height of the bar and the
@@ -607,7 +608,10 @@ def generate_resources(
 
 
 def pdf_template_setup(
-    template, template_sheet="scorecard_template_elements", font=None
+    template,
+    template_sheet="scorecard_template_elements",
+    font=None,
+    language="English",
 ):
     """
     Takes a template xlsx sheet defining elements for use in fpdf2's FlexTemplate function.
@@ -622,6 +626,19 @@ def pdf_template_setup(
     # read in elements
     elements = pd.read_excel(template, sheet_name=template_sheet)
     document_pages = elements.page.unique()
+
+    # Conditional formatting to help avoid inappropriate line breaks and gaps in Thai
+    if language == "Thai":
+        elements["align"] = elements["align"].replace("J", "L")
+        elements.loc[
+            (elements["type"] == "T") & (elements["size"] < 12), "size"
+        ] = (
+            elements.loc[
+                (elements["type"] == "T") & (elements["size"] < 12), "size"
+            ]
+            - 1
+        )
+
     if font is not None:
         elements.loc[elements.font == "custom", "font"] = font
 
@@ -832,7 +849,9 @@ def generate_scorecard(
     phrases = prepare_phrases(xlsx_scorecard_template, city, language)
 
     # Set up PDF document template pages
-    pages = pdf_template_setup(xlsx_scorecard_template, font=font)
+    pages = pdf_template_setup(
+        xlsx_scorecard_template, font=font, language=language
+    )
     pages = format_pages(pages, phrases)
 
     # initialise PDF
@@ -961,6 +980,9 @@ def generate_scorecard(
     template = FlexTemplate(pdf, elements=pages["5"])
     template["citations"] = phrases["citations"]
     template["study_executive_names"] = phrases["study_executive_names"]
+    template["local_collaborators"] = template["local_collaborators"].format(
+        title_city=phrases["title_city"]
+    )
     template["local_collaborators_names"] = phrases[
         "local_collaborators_names"
     ]

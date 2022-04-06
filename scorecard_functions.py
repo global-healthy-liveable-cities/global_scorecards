@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+from babel.numbers import format_decimal as fnum
 from fpdf import FPDF, FlexTemplate
 from matplotlib.cm import ScalarMappable
 from matplotlib.lines import Line2D
@@ -248,7 +249,6 @@ def spatial_dist_map(
         cax=cax,
         cmap=cmap,
     )
-
     # scalebar
     gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
     scalebar_length = int(gdf_width / (3000))
@@ -258,10 +258,8 @@ def spatial_dist_map(
         units=f"{scalebar_length}{phrases['km']}",
         fontproperties=fm.FontProperties(size=textsize),
     )
-
     # north arrow
     add_localised_north_arrow(ax, text=phrases["north arrow"])
-
     # axis formatting
     cax.tick_params(labelsize=textsize)
     cax.xaxis.label.set_size(textsize)
@@ -311,7 +309,6 @@ def threshold_map(
         cax=cax,
         cmap=cmap,
     )
-
     # scalebar
     gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
     scalebar_length = int(gdf_width / (3000))
@@ -321,10 +318,8 @@ def threshold_map(
         units=f"{scalebar_length}{phrases['km']}",
         fontproperties=fm.FontProperties(size=textsize),
     )
-
     # north arrow
     add_localised_north_arrow(ax, text=phrases["north arrow"])
-
     # axis formatting
     cax.xaxis.set_major_formatter(ticker.EngFormatter())
     cax.tick_params(labelsize=textsize)
@@ -383,6 +378,7 @@ def policy_rating(
     height=fpdf2_mm_scale(15),
     label="Policies identified",
     comparison_label="25 city median",
+    locale="en",
     path="policy_rating_test.jpg",
     dpi=300,
 ):
@@ -444,10 +440,9 @@ def policy_rating(
     )
     ax_city.tick_params(labelsize=textsize)
     # return figure with final styling
+    xlabel = f"{comparison_label} ({fnum(comparison['50%'],'0.0',locale)})"
     ax.set_xlabel(
-        f"{comparison_label} ({comparison['50%']})",
-        labelpad=0.5,
-        fontsize=textsize,
+        xlabel, labelpad=0.5, fontsize=textsize,
     )
     plt.tight_layout()
     fig.savefig(path, dpi=dpi)
@@ -471,6 +466,7 @@ def generate_resources(
     indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
     """
     phrases = prepare_phrases(xlsx_scorecard_template, city, language)
+    locale = phrases["locale"]
     # read city data
     gdf = gpd.read_file(gpkg_hexes, layer=city.lower().replace(" ", "_"))
     gdf["all_cities_walkability"] = gdf["all_cities_walkability"].apply(
@@ -482,7 +478,6 @@ def generate_resources(
         os.mkdir("cities")
     if not os.path.exists(city_path):
         os.mkdir(city_path)
-
     # Spatial access liveability profile
     city_stats = {}
     city_stats["access"] = df.loc[city, indicators]
@@ -492,7 +487,6 @@ def generate_resources(
             city_stats_index[
                 i
             ] = f"{city_stats['access'].index[i]} (not evaluated)"
-
     city_stats["access"].index = city_stats_index
     city_stats["access"].index = [
         phrases[x] for x in city_stats["access"].index
@@ -530,7 +524,7 @@ def generate_resources(
             "range": [0, 100],
             "label": (
                 f"{phrases[('Percentage of population with access to public transport with service frequency of 20 minutes or less')]} "
-                f'({df.loc[city,"Public transport with regular service"]:.1f}%)'
+                f'({fnum(df.loc[city,"Public transport with regular service"],"0.0",locale)}%)'
             ),
             "tick_labels": None,
             "outfile": f"{city_path}/pct_access_500m_pt_{language}.jpg",
@@ -540,13 +534,12 @@ def generate_resources(
             "range": [0, 100],
             "label": (
                 f"{phrases[('Percentage of population with access to public open space of area 1.5 hectares or larger')]} "
-                f'({df.loc[city,"Large public open space"]:.1f}%)'
+                f'({fnum(df.loc[city,"Large public open space"],"0.0",locale)}%)'
             ),
             "tick_labels": None,
             "outfile": f"{city_path}/pct_access_500m_public_open_space_large_score_{language}.jpg",
         },
     ]
-
     if (
         "pct_access_500m_pt_gtfs_freq_20_score"
         not in gdf.describe().transpose().index
@@ -556,9 +549,8 @@ def generate_resources(
         ] = "pct_access_500m_pt_any_score"
         spatial_distribution_figures[1]["label"] = (
             f"{phrases['Percentage of population with access to public transport']}\n"
-            f'({df.loc[city,"Public transport stop"]:.1f}%)'
+            f'({fnum(df.loc[city,"Public transport stop"],"0.0",locale)}%)'
         )
-
     for f in spatial_distribution_figures:
         spatial_dist_map(
             gdf,
@@ -584,7 +576,6 @@ def generate_resources(
             path=f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg",
             phrases=phrases,
         )
-
     # Policy ratings
     policy_rating(
         range=[0, 24],
@@ -593,6 +584,7 @@ def generate_resources(
         label="",
         comparison_label=phrases["25 city comparison"],
         cmap=cmap,
+        locale=locale,
         path=f"{city_path}/policy_presence_rating_{language}.jpg",
     )
     policy_rating(
@@ -602,6 +594,7 @@ def generate_resources(
         label="",
         comparison_label=phrases["25 city comparison"],
         cmap=cmap,
+        locale=locale,
         path=f"{city_path}/policy_checklist_rating_{language}.jpg",
     )
     return city_path
@@ -731,7 +724,6 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
     phrases["credit_image2"] = city_details["credit_image2"][city]
     # incoporating study citations
     citation_json = json.loads(city_details["exceptions_json"]["Study"])
-
     # handle city-specific exceptions
     city_exceptions = json.loads(city_details["exceptions_json"][city])
     if language in city_exceptions:
@@ -740,12 +732,10 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         )
         for e in city_exceptions:
             phrases[e] = city_exceptions[e].replace("|", "\n")
-
     for citation in citation_json:
         phrases[citation] = (
             citation_json[citation].replace("|", "\n").format(**phrases)
         )
-
     phrases["suggested_citation"] = "{}: {}".format(
         phrases["citation_word"],
         phrases["citation_doi"].format(
@@ -754,11 +744,6 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
             language=phrases["vernacular"],
         ),
     )
-
-    # if language=='Thai':
-    # for phrase in phrases:
-    # phrases[phrase] = thaiwrap(phrases,wrap=False,delimiter=' ')
-
     return phrases
 
 
@@ -847,7 +832,7 @@ def generate_scorecard(
     """
     # set up phrases
     phrases = prepare_phrases(xlsx_scorecard_template, city, language)
-
+    locale = phrases["locale"]
     # Set up PDF document template pages
     pages = pdf_template_setup(
         xlsx_scorecard_template, font=font, language=language
@@ -887,7 +872,7 @@ def generate_scorecard(
     ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
     template["walkability_above_median_pct"] = phrases[
         "walkability_above_median_pct"
-    ].format(threshold_scenarios["walkability"])
+    ].format(fnum(threshold_scenarios["walkability"], "0.0", locale))
     ## Policy ratings
     template[
         "presence_rating"
@@ -942,8 +927,12 @@ def generate_scorecard(
     ## Density threshold captions
     for row in threshold_scenarios["data"].index:
         template[row] = phrases[f"optimal_range - {row}"].format(
-            threshold_scenarios["data"].loc[row, city],
-            threshold_scenarios["lower_bound"].loc[row].location,
+            fnum(threshold_scenarios["data"].loc[row, city], "0.0", locale),
+            fnum(
+                threshold_scenarios["lower_bound"].loc[row].location,
+                "#,000",
+                locale,
+            ),
             phrases["density_units"],
         )
 

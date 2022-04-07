@@ -620,8 +620,8 @@ def pdf_template_setup(
     elements = pd.read_excel(template, sheet_name=template_sheet)
     document_pages = elements.page.unique()
 
-    # Conditional formatting to help avoid inappropriate line breaks and gaps in Thai
-    if language == "Thai":
+    # Conditional formatting to help avoid inappropriate line breaks and gaps in Tamil and Thai
+    if language in ["Tamil", "Thai"]:
         elements["align"] = elements["align"].replace("J", "L")
         elements.loc[
             (elements["type"] == "T") & (elements["size"] < 12), "size"

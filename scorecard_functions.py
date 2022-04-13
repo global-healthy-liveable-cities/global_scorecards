@@ -740,13 +740,8 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         phrases[citation] = (
             citation_json[citation].replace("|", "\n").format(**phrases)
         )
-    phrases["suggested_citation"] = "{}: {}".format(
-        phrases["citation_word"],
-        phrases["citation_doi"].format(
-            city=city,
-            country=phrases["country"],
-            language=phrases["vernacular"],
-        ),
+    phrases["citation_doi"] = phrases["citation_doi"].format(
+        city=city, country=phrases["country"], language=phrases["vernacular"]
     )
     return phrases
 
@@ -860,13 +855,29 @@ def generate_scorecard(
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
 
-    template["cover_image"] = "hero_images/cover_background - alt-01.png"
+    template["cover_image"] = "hero_images/cover_background.png"
     template["cover_logo"] = "logos/GOHSC.jpg"
     template.render()
 
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
+    template["citations"] = phrases["citations"]
+    template["study_executive_names"] = phrases["study_executive_names"]
+    template["local_collaborators"] = template["local_collaborators"].format(
+        title_city=phrases["title_city"]
+    )
+    template["local_collaborators_names"] = phrases[
+        "local_collaborators_names"
+    ]
+    if phrases["translation_names"] is None:
+        template["translation"] = ""
+        template["translation_names"] = ""
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["3"])
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     ## Walkability plot
@@ -917,7 +928,7 @@ def generate_scorecard(
 
     # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["3"])
+    template = FlexTemplate(pdf, elements=pages["4"])
     ## Density plots
     template[
         "local_nh_population_density"
@@ -948,7 +959,7 @@ def generate_scorecard(
 
     # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["4"])
+    template = FlexTemplate(pdf, elements=pages["5"])
     template[
         "pct_access_500m_pt.jpg"
     ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
@@ -969,20 +980,8 @@ def generate_scorecard(
 
     # Set up last page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["5"])
-    template["citations"] = phrases["citations"]
-    template["study_executive_names"] = phrases["study_executive_names"]
-    template["local_collaborators"] = template["local_collaborators"].format(
-        title_city=phrases["title_city"]
-    )
-    template["local_collaborators_names"] = phrases[
-        "local_collaborators_names"
-    ]
-    if phrases["translation_names"] is None:
-        template["translation"] = ""
-        template["translation_names"] = ""
+    template = FlexTemplate(pdf, elements=pages["6"])
 
-    template["suggested_citation"] = phrases["suggested_citation"]
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 

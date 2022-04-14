@@ -549,7 +549,7 @@ def generate_resources(
             "range": [0, 100],
             "label": (
                 f"{phrases[('Percentage of population with access to public open space of area 1.5 hectares or larger')]} "
-                f'({fnum(df.loc[city,"Large public open space"],"0.0",locale)}%)'
+                f'({_pct(fnum(df.loc[city,"Large public open space"],"0.0",locale),locale)})'
             ),
             "tick_labels": None,
             "outfile": f"{city_path}/pct_access_500m_public_open_space_large_score_{language}.jpg",
@@ -903,7 +903,9 @@ def generate_scorecard(
     ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
     template["walkability_above_median_pct"] = phrases[
         "walkability_above_median_pct"
-    ].format(fnum(threshold_scenarios["walkability"], "0.0", locale))
+    ].format(
+        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+    )
     ## Policy ratings
     template[
         "presence_rating"
@@ -953,7 +955,12 @@ def generate_scorecard(
     ## Density threshold captions
     for row in threshold_scenarios["data"].index:
         template[row] = phrases[f"optimal_range - {row}"].format(
-            fnum(threshold_scenarios["data"].loc[row, city], "0.0", locale),
+            _pct(
+                fnum(
+                    threshold_scenarios["data"].loc[row, city], "0.0", locale
+                ),
+                locale,
+            ),
             fnum(
                 threshold_scenarios["lower_bound"].loc[row].location,
                 "#,000",

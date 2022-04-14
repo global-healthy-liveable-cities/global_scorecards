@@ -11,6 +11,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 from babel.numbers import format_decimal as fnum
+from babel.units import format_unit
 from fpdf import FPDF, FlexTemplate
 from matplotlib.cm import ScalarMappable
 from matplotlib.lines import Line2D
@@ -25,9 +26,14 @@ def fpdf2_mm_scale(mm):
     return 2 * mm / 25.4
 
 
+def _pct(value, locale, length="short"):
+    return format_unit(value, "percent", locale=locale, length=length)
+
+
 def add_scalebar(
     ax,
     length,
+    multiplier,
     units,
     fontproperties,
     loc="upper left",
@@ -35,6 +41,7 @@ def add_scalebar(
     color="black",
     frameon=False,
     size_vertical=2,
+    locale="en",
 ):
     """
     Adds a scalebar to matplotlib map.
@@ -47,8 +54,8 @@ def add_scalebar(
     """
     scalebar = AnchoredSizeBar(
         ax.transData,
-        length,
-        units,
+        length * multiplier,
+        format_unit(length, units, locale=locale, length="short"),
         loc=loc,
         pad=pad,
         color=color,
@@ -222,6 +229,7 @@ def spatial_dist_map(
     height=fpdf2_mm_scale(80),
     dpi=300,
     phrases={"north arrow": "N", "km": "km"},
+    locale="en",
 ):
     """
     Spatial distribution maps using geopandas geodataframe
@@ -250,12 +258,15 @@ def spatial_dist_map(
         cmap=cmap,
     )
     # scalebar
-    gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
-    scalebar_length = int(gdf_width / (3000))
     add_scalebar(
         ax,
-        length=scalebar_length * 1000,
-        units=f"{scalebar_length}{phrases['km']}",
+        length=int(
+            (gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0])
+            / (3000)
+        ),
+        multiplier=1000,
+        units="kilometer",
+        locale=locale,
         fontproperties=fm.FontProperties(size=textsize),
     )
     # north arrow
@@ -287,6 +298,7 @@ def threshold_map(
     height=fpdf2_mm_scale(80),
     dpi=300,
     phrases={"north arrow": "N", "km": "km"},
+    locale="en",
 ):
     figsize = (width, height)
     textsize = 14
@@ -310,12 +322,15 @@ def threshold_map(
         cmap=cmap,
     )
     # scalebar
-    gdf_width = gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0]
-    scalebar_length = int(gdf_width / (3000))
     add_scalebar(
         ax,
-        length=scalebar_length * 1000,
-        units=f"{scalebar_length}{phrases['km']}",
+        length=int(
+            (gdf.geometry.total_bounds[2] - gdf.geometry.total_bounds[0])
+            / (3000)
+        ),
+        multiplier=1000,
+        units="kilometer",
+        locale=locale,
         fontproperties=fm.FontProperties(size=textsize),
     )
     # north arrow
@@ -549,7 +564,7 @@ def generate_resources(
         ] = "pct_access_500m_pt_any_score"
         spatial_distribution_figures[1]["label"] = (
             f"{phrases['Percentage of population with access to public transport']}\n"
-            f'({fnum(df.loc[city,"Public transport stop"],"0.0",locale)}%)'
+            f'({_pct(fnum(df.loc[city,"Public transport stop"],"0.0",locale),locale)})'
         )
     for f in spatial_distribution_figures:
         spatial_dist_map(
@@ -561,6 +576,7 @@ def generate_resources(
             cmap=cmap,
             path=f["outfile"],
             phrases=phrases,
+            locale=locale,
         )
     # Threshold maps
     for row in threshold_scenarios["data"].index:
@@ -575,6 +591,7 @@ def generate_resources(
             cmap=cmap,
             path=f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg",
             phrases=phrases,
+            locale=locale,
         )
     # Policy ratings
     policy_rating(
@@ -895,26 +912,21 @@ def generate_scorecard(
         "quality_rating"
     ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
     template["city_header"] = phrases["city_name"]
+
     ## City planning requirement presence (round 0.5 up to 1)
     policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
-    template["policy_urban_text1_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][0])
-    ]
-    template["policy_urban_text2_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][1])
-    ]
-    template["policy_urban_text3_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][2])
-    ]
-    template["policy_urban_text4_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][3])
-    ]
-    template["policy_urban_text5_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][4])
-    ]
-    template["policy_urban_text6_response"] = policy_indicators[
-        np.ceil(city_policy["Presence"][5])
-    ]
+    for x in range(1, 7):
+        # check presence
+        template[f"policy_urban_text{x}_response"] = policy_indicators[
+            np.ceil(city_policy["Presence"][x - 1])
+        ]
+        # format percentage units according to locale
+        for gdp in ["middle", "upper"]:
+            template[f"policy_urban_text{x}_{gdp}"] = _pct(
+                float(template[f"policy_urban_text{x}_{gdp}"]),
+                locale,
+                length="short",
+            )
 
     ## Walkable neighbourhood policy checklist
     for analysis in ["Checklist"]:

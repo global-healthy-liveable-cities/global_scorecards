@@ -737,8 +737,8 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         languages["name"] == f"{city} - Country", language
     ].values[0]
     phrases["city"] = city
-    phrases["study_doi"] = city_details["DOI"]["Study"]
-    phrases["city_doi"] = city_details["DOI"][city]
+    phrases["study_doi"] = f'https://doi.org/{city_details["DOI"]["Study"]}'
+    phrases["city_doi"] = f'https://doi.org/{city_details["DOI"][city]}'
     phrases["study_executive_names"] = city_details["Names"]["Study"]
     phrases["local_collaborators_names"] = city_details["Names"][city]
     phrases["credit_image1"] = city_details["credit_image1"][city]

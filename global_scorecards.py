@@ -209,7 +209,9 @@ if __name__ == "__main__":
             sheet_name=policy_lookup["column_formatting"],
             index_col=0,
         )
-        df_labels = df_labels[~df_labels["Display"].isna()]
+        df_labels = df_labels[~df_labels["Display"].isna()].sort_values(
+            by=["Display", "Order"]
+        )
 
         df_policy = {}
 

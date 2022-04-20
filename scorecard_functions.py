@@ -931,12 +931,11 @@ def generate_scorecard(
             )
 
     ## Walkable neighbourhood policy checklist
-    for analysis in ["Checklist"]:
-        for i, policy in enumerate(city_policy[analysis].index):
-            row = i + 1
-            for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
-                col = j + 1
-                template[f"policy_{analysis}_text{row}_response{col}"] = item
+    for i, policy in enumerate(city_policy["Checklist"].index):
+        row = i + 1
+        for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
+            col = j + 1
+            template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
 
     template.render()
 

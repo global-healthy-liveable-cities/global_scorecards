@@ -223,6 +223,42 @@ if __name__ == "__main__":
                 nrows=policy_lookup["parameters"]["nrows"],
                 index_col=policy_lookup["parameters"]["index_col"],
             )
+            if policy_analysis == "Presence":
+                # get percentage of policies meeting requirements stratified by income GDP groups
+                df_policy[f"{policy_analysis}_gdp"] = round(
+                    (
+                        100
+                        * df_policy["Presence"]
+                        .loc[:, df_policy["Presence"].columns[:-1]]
+                        .replace(0.5, 1)
+                        .groupby(
+                            df_policy["Presence"]["GDP"] == "High-income"
+                        )[df_policy["Presence"].columns[2:-1]]
+                        .mean()
+                        .transpose()
+                    ),
+                    0,
+                )
+                df_policy[f"{policy_analysis}_gdp"].columns = [
+                    "middle",
+                    "upper",
+                ]
+                # restrict to policies of interest
+                df_policy[f"{policy_analysis}_gdp"] = df_policy[
+                    f"{policy_analysis}_gdp"
+                ].loc[
+                    [
+                        x
+                        for x in df_labels.loc[
+                            df_labels["Display"] == "Presence"
+                        ].index
+                        if x in df_policy[f"{policy_analysis}_gdp"].index
+                    ]
+                ]
+                # format with short labels
+                df_policy[f"{policy_analysis}_gdp"].index = df_labels.loc[
+                    df_policy[f"{policy_analysis}_gdp"].index, "Label"
+                ].values
             if policy_analysis in ["Presence", "Checklist"]:
                 # store overall rating for this analysis
                 df_policy[f"{policy_analysis}_rating"] = df_policy[
@@ -259,6 +295,7 @@ if __name__ == "__main__":
                             f"{policy_analysis}_rating"
                         ].describe()
 
+                city_policy["Presence_gdp"] = df_policy["Presence_gdp"]
                 threshold_scenarios["walkability"] = walkability_stats.loc[
                     city, "pct_walkability_above_median"
                 ]

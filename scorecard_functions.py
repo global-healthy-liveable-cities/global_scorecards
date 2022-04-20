@@ -925,7 +925,7 @@ def generate_scorecard(
         # format percentage units according to locale
         for gdp in ["middle", "upper"]:
             template[f"policy_urban_text{x}_{gdp}"] = _pct(
-                float(template[f"policy_urban_text{x}_{gdp}"]),
+                float(city_policy["Presence_gdp"].iloc[x - 1][gdp]),
                 locale,
                 length="short",
             )

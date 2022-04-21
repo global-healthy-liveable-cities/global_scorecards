@@ -1009,19 +1009,19 @@ def generate_scorecard(
     if not os.path.exists("scorecards"):
         os.mkdir("scorecards")
 
+    output_paths = []
     if by_city:
         if not os.path.exists("scorecards/by_city"):
             os.mkdir("scorecards/by_city")
-        scorecard_path = f"scorecards/by_city/{city}"
+        output_paths.append(f"scorecards/by_city/{city}")
 
     if by_language:
-        scorecard_path = f"scorecards/{language}"
+        output_paths.append(f"scorecards/{language}")
 
-    if by_city or by_language:
+    for scorecard_path in output_paths:
         if not os.path.exists(scorecard_path):
             os.mkdir(scorecard_path)
         scorecard_pdf_file = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
         pdf.output(f"{scorecard_path}/{scorecard_pdf_file}")
-        return f"Scorecard generated: {scorecard_path}/{scorecard_pdf_file}"
-    else:
-        return "by_langage set to False, but by_city not set to True; this means there's no output, so why run this?!  Something's not right..."
+
+    return f"Scorecard generated ({output_paths}): {scorecard_pdf_file}"

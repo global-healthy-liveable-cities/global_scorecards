@@ -55,7 +55,14 @@ parser.add_argument(
     "--by_city",
     action="store_true",
     default=False,
-    help="Save scorecard reports in city- rather than language-specific sub-folders (the latter is the default).",
+    help="Save scorecard reports in city-specific sub-folders.",
+)
+
+parser.add_argument(
+    "--by_language",
+    action="store_true",
+    default=True,
+    help="Save scorecard reports in language-specific sub-folders (default).",
 )
 
 

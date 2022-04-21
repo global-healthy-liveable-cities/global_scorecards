@@ -842,6 +842,7 @@ def generate_scorecard(
     template_sheet="scorecard_template_elements",
     font=None,
     by_city=False,
+    by_language=True,
 ):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
@@ -1007,14 +1008,20 @@ def generate_scorecard(
     # Output scorecard pdf
     if not os.path.exists("scorecards"):
         os.mkdir("scorecards")
+
     if by_city:
         if not os.path.exists("scorecards/by_city"):
             os.mkdir("scorecards/by_city")
         scorecard_path = f"scorecards/by_city/{city}"
-    else:
+
+    if by_language:
         scorecard_path = f"scorecards/{language}"
-    if not os.path.exists(scorecard_path):
-        os.mkdir(scorecard_path)
-    scorecard_pdf_file = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
-    pdf.output(f"{scorecard_path}/{scorecard_pdf_file}")
-    return f"Scorecard generated: {scorecard_path}/{scorecard_pdf_file}"
+
+    if by_city or by_language:
+        if not os.path.exists(scorecard_path):
+            os.mkdir(scorecard_path)
+        scorecard_pdf_file = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
+        pdf.output(f"{scorecard_path}/{scorecard_pdf_file}")
+        return f"Scorecard generated: {scorecard_path}/{scorecard_pdf_file}"
+    else:
+        return "by_langage set to False, but by_city not set to True; this means there's no output, so why run this?!  Something's not right..."

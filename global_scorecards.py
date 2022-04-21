@@ -51,6 +51,13 @@ parser.add_argument(
     help="Identify all languages associated with specified cities and prepare reports for these.",
 )
 
+parser.add_argument(
+    "--by_city",
+    action="store_true",
+    default=False,
+    help="Save scorecard reports in city- rather than language-specific sub-folders (the latter is the default).",
+)
+
 
 config = parser.parse_args()
 all_cities = [x.strip() for x in config.cities.split(",")]
@@ -331,6 +338,7 @@ if __name__ == "__main__":
                     xlsx_scorecard_template=xlsx_scorecard_template,
                     language=language,
                     font=font,
+                    by_city=config.by_city,
                 )
                 successful += 1
             except Exception as e:

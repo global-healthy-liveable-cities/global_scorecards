@@ -346,6 +346,7 @@ if __name__ == "__main__":
                     language=language,
                     font=font,
                     by_city=config.by_city,
+                    by_language=config.by_language,
                 )
                 successful += 1
             except Exception as e:

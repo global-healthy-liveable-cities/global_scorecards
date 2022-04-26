@@ -473,7 +473,7 @@ def generate_resources(
     comparisons,
     threshold_scenarios,
     city_policy,
-    xlsx_scorecard_template,
+    configuration_file,
     language,
     cmap,
 ):
@@ -618,10 +618,7 @@ def generate_resources(
 
 
 def pdf_template_setup(
-    template,
-    template_sheet="scorecard_template_elements",
-    font=None,
-    language="English",
+    template, template_sheet="template_web", font=None, language="English",
 ):
     """
     Takes a template xlsx sheet defining elements for use in fpdf2's FlexTemplate function.
@@ -699,12 +696,10 @@ def format_pages(pages, phrases):
     return pages
 
 
-def prepare_phrases(xlsx_scorecard_template, city, language):
-    languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
+def prepare_phrases(configuration_file, city, language):
+    languages = pd.read_excel(configuration_file, sheet_name="languages")
     phrases = json.loads(languages.set_index("name").to_json())[language]
-    city_details = pd.read_excel(
-        xlsx_scorecard_template, sheet_name="city_details"
-    )
+    city_details = pd.read_excel(configuration_file, sheet_name="city_details")
     city_details = json.loads(city_details.set_index("City").to_json())
     country_code = city_details["Country Code"][city]
     if language == "English" and country_code not in ["AU", "GB", "US"]:
@@ -799,8 +794,8 @@ def wrap_sentences(words, limit=50, delimiter=""):
     return sentences
 
 
-def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):
-    fonts = pd.read_excel(xlsx_scorecard_template, sheet_name="fonts")
+def prepare_pdf_fonts(pdf, configuration_file, language):
+    fonts = pd.read_excel(configuration_file, sheet_name="fonts")
     fonts = (
         fonts.loc[
             fonts["Language"].isin(
@@ -837,9 +832,9 @@ def generate_scorecard(
     phrases,
     city_policy,
     threshold_scenarios,
-    xlsx_scorecard_template,
+    configuration_file,
     language="English",
-    template_sheet="scorecard_template_elements",
+    template_sheet="template_web",
     font=None,
     by_city=False,
     by_language=True,
@@ -852,7 +847,10 @@ def generate_scorecard(
     locale = phrases["locale"]
     # Set up PDF document template pages
     pages = pdf_template_setup(
-        xlsx_scorecard_template, font=font, language=language
+        configuration_file,
+        template_sheet=template_sheet,
+        font=font,
+        language=language,
     )
     pages = format_pages(pages, phrases)
 
@@ -860,7 +858,7 @@ def generate_scorecard(
     pdf = FPDF(orientation="portrait", format="A4")
 
     # set up fonts
-    prepare_pdf_fonts(pdf, xlsx_scorecard_template, language)
+    prepare_pdf_fonts(pdf, configuration_file, language)
 
     pdf.set_author(phrases["metadata_author"])
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")

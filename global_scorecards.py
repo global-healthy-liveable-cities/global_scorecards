@@ -94,12 +94,10 @@ if __name__ == "__main__":
     xlsx_policy_data = os.path.abspath(
         "data/Policy Figures 1 & 2_23 Dec_numerical.xlsx"
     )
-    xlsx_scorecard_template = "scorecard_template_elements.xlsx"
+    configuration_file = "scorecard_template_elements.xlsx"
     # Run all specified language-city permutations if auto-language detection
     if config.auto_language:
-        languages = pd.read_excel(
-            xlsx_scorecard_template, sheet_name="languages"
-        )
+        languages = pd.read_excel(configuration_file, sheet_name="languages")
         languages = languages.query(f"name in {all_cities}").dropna(
             axis=1, how="all"
         )
@@ -128,7 +126,7 @@ if __name__ == "__main__":
         print(f"\n{language} language reports:")
         cities = languages[language]
         # set up fonts
-        fonts = pd.read_excel(xlsx_scorecard_template, sheet_name="fonts")
+        fonts = pd.read_excel(configuration_file, sheet_name="fonts")
         if (
             language.replace(" (Auto-translation)", "")
             in fonts.Language.unique()
@@ -317,7 +315,7 @@ if __name__ == "__main__":
                 ]
                 # set up phrases
                 phrases = scorecard_functions.prepare_phrases(
-                    xlsx_scorecard_template, city, language
+                    configuration_file, city, language
                 )
 
                 # Generate resources
@@ -331,7 +329,7 @@ if __name__ == "__main__":
                         comparisons,
                         threshold_scenarios,
                         city_policy,
-                        xlsx_scorecard_template,
+                        configuration_file,
                         language,
                         cmap,
                     )
@@ -342,7 +340,8 @@ if __name__ == "__main__":
                     phrases,
                     threshold_scenarios=threshold_scenarios,
                     city_policy=city_policy,
-                    xlsx_scorecard_template=xlsx_scorecard_template,
+                    configuration_file=configuration_file,
+                    template_sheet="template_web",
                     language=language,
                     font=font,
                     by_city=config.by_city,

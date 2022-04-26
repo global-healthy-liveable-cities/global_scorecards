@@ -749,12 +749,11 @@ def prepare_phrases(configuration_file, city, language):
         for e in city_exceptions:
             phrases[e] = city_exceptions[e].replace("|", "\n")
     for citation in citation_json:
-        phrases[citation] = (
-            citation_json[citation].replace("|", "\n").format(**phrases)
-        )
-    phrases["citation_doi"] = phrases["citation_doi"].format(
-        city=city, country=phrases["country"], language=phrases["vernacular"]
-    )
+        if citation != "citation_doi" or "citation_doi" not in phrases:
+            phrases[citation] = (
+                citation_json[citation].replace("|", "\n").format(**phrases)
+            )
+    phrases["citation_doi"] = phrases["citation_doi"].format(**phrases)
     return phrases
 
 
@@ -886,7 +885,7 @@ def generate_scorecard(
     pages = format_pages(pages, phrases)
 
     # initialise PDF
-    pdf = FPDF(orientation="portrait", format="A4")
+    pdf = FPDF(orientation="portrait", format="A4", unit="mm")
 
     # set up fonts
     prepare_pdf_fonts(pdf, configuration_file, language)
@@ -895,6 +894,54 @@ def generate_scorecard(
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
 
+    if template_sheet == "template_web":
+        pdf = pdf_for_web(
+            pdf,
+            pages,
+            city,
+            language,
+            locale,
+            phrases,
+            threshold_scenarios,
+            city_policy,
+        )
+    elif template_sheet == "template_print":
+        pdf = pdf_for_print(
+            pdf,
+            pages,
+            city,
+            language,
+            locale,
+            phrases,
+            threshold_scenarios,
+            city_policy,
+        )
+
+    # Output report pdf
+    filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
+    capture_result = save_pdf_layout(
+        pdf,
+        folder="scorecards",
+        template=template_sheet.replace("template", ""),
+        language=language,
+        city=city,
+        by_city=by_city,
+        by_language=by_language,
+        filename=filename,
+    )
+    return capture_result
+
+
+def pdf_for_web(
+    pdf,
+    pages,
+    city,
+    language,
+    locale,
+    phrases,
+    threshold_scenarios,
+    city_policy,
+):
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
@@ -1034,19 +1081,159 @@ def generate_scorecard(
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 
-    # Output report pdf
-    filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
-    capture_result = save_pdf_layout(
-        pdf,
-        folder="scorecards",
-        template=template_sheet.replace("template", ""),
-        language=language,
-        city=city,
-        by_city=by_city,
-        by_language=by_language,
-        filename=filename,
+    return pdf
+
+
+def pdf_for_print(
+    pdf,
+    pages,
+    city,
+    language,
+    locale,
+    phrases,
+    threshold_scenarios,
+    city_policy,
+):
+    # Set up Cover page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["1"])
+    if os.path.exists(f"hero_images/{city}-1.jpg"):
+        template["hero_image"] = f"hero_images/{city}-1.jpg"
+        template["hero_alt"] = ""
+        template["credit_image1"] = phrases["credit_image1"]
+
+    template["cover_image"] = "hero_images/cover_background.png"
+    template["cover_logo"] = "logos/GOHSC.jpg"
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["2"])
+    template["citations"] = phrases["citations"]
+    template["study_executive_names"] = phrases["study_executive_names"]
+    template["local_collaborators"] = template["local_collaborators"].format(
+        title_city=phrases["title_city"]
     )
-    return capture_result
+    template["local_collaborators_names"] = phrases[
+        "local_collaborators_names"
+    ]
+    if phrases["translation_names"] is None:
+        template["translation"] = ""
+        template["translation_names"] = ""
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["3"])
+    ## Access profile plot
+    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+    ## Walkability plot
+    template[
+        "all_cities_walkability"
+    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    template["walkability_above_median_pct"] = phrases[
+        "walkability_above_median_pct"
+    ].format(
+        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+    )
+    ## Policy ratings
+    template[
+        "presence_rating"
+    ] = f"cities/{city}/policy_presence_rating_{language}.jpg"
+    template[
+        "quality_rating"
+    ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
+    template["city_header"] = phrases["city_name"]
+
+    ## City planning requirement presence (round 0.5 up to 1)
+    policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
+    for x in range(1, 7):
+        # check presence
+        template[f"policy_urban_text{x}_response"] = policy_indicators[
+            np.ceil(city_policy["Presence"][x - 1])
+        ]
+        # format percentage units according to locale
+        for gdp in ["middle", "upper"]:
+            template[f"policy_urban_text{x}_{gdp}"] = _pct(
+                float(city_policy["Presence_gdp"].iloc[x - 1][gdp]),
+                locale,
+                length="short",
+            )
+
+    ## Walkable neighbourhood policy checklist
+    for i, policy in enumerate(city_policy["Checklist"].index):
+        row = i + 1
+        for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
+            col = j + 1
+            template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["4"])
+    ## Density plots
+    template[
+        "local_nh_population_density"
+    ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
+
+    template[
+        "local_nh_intersection_density"
+    ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
+
+    ## Density threshold captions
+    for row in threshold_scenarios["data"].index:
+        template[row] = phrases[f"optimal_range - {row}"].format(
+            _pct(
+                fnum(
+                    threshold_scenarios["data"].loc[row, city], "0.0", locale
+                ),
+                locale,
+            ),
+            fnum(
+                threshold_scenarios["lower_bound"].loc[row].location,
+                "#,000",
+                locale,
+            ),
+            phrases["density_units"],
+        )
+
+    if os.path.exists(f"hero_images/{city}-2.jpg"):
+        template["hero_image_2"] = f"hero_images/{city}-2.jpg"
+        template["hero_alt_2"] = ""
+        template["credit_image2"] = phrases["credit_image2"]
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["5"])
+    template[
+        "pct_access_500m_pt.jpg"
+    ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
+    template[
+        "pct_access_500m_public_open_space_large_score"
+    ] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
+    template["city_text"] = phrases[f"{city} - Summary"]
+
+    ## Checklist ratings for PT and POS
+    for analysis in ["PT", "POS"]:
+        for i, policy in enumerate(city_policy[analysis].index):
+            row = i + 1
+            for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
+                col = j + 1
+                template[f"policy_{analysis}_text{row}_response{col}"] = item
+
+    template.render()
+
+    # Set up last page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["6"])
+
+    template["licence_image"] = "logos/by-nc.jpg"
+    template.render()
+
+    return pdf
 
 
 def policy_data_setup(policy_lookup):

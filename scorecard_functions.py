@@ -1007,14 +1007,18 @@ def generate_scorecard(
     if not os.path.exists("scorecards"):
         os.mkdir("scorecards")
 
+    template_folder = f"scorecards/{template_sheet.replace('template','')}"
+    if not os.path.exists(template_folder):
+        os.mkdir(template_folder)
+
     output_paths = []
     if by_city:
-        if not os.path.exists("scorecards/by_city"):
-            os.mkdir("scorecards/by_city")
-        output_paths.append(f"scorecards/by_city/{city}")
+        if not os.path.exists(f"{template_folder}/by_city"):
+            os.mkdir(f"{template_folder}/by_city")
+        output_paths.append(f"{template_folder}/by_city/{city}")
 
     if by_language:
-        output_paths.append(f"scorecards/{language}")
+        output_paths.append(f"{template_folder}/{language}")
 
     for scorecard_path in output_paths:
         if not os.path.exists(scorecard_path):

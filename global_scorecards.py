@@ -54,7 +54,7 @@ parser.add_argument(
 parser.add_argument(
     "--by_city",
     action="store_true",
-    default=False,
+    default=True,
     help="Save scorecard reports in city-specific sub-folders.",
 )
 
@@ -65,9 +65,20 @@ parser.add_argument(
     help="Save scorecard reports in language-specific sub-folders (default).",
 )
 
+parser.add_argument(
+    "--templates",
+    default="web",
+    help=(
+        'A list of templates to iterate outputs over, for example: "web" (default), or "web,print"\n'
+        'The words listed correspond to sheets present in the configuration file, prefixed by "template_",'
+        'for example, "template_web" and "template_print".  These files contain the PDF template layout '
+        "information required by fpdf2 for pagination of the output PDF files."
+    ),
+)
 
 config = parser.parse_args()
 all_cities = [x.strip() for x in config.cities.split(",")]
+templates = [f"template_{x.strip()}" for x in config.templates.split(",")]
 cmap = batlow_map
 
 if __name__ == "__main__":
@@ -293,7 +304,7 @@ if __name__ == "__main__":
         # Loop over cities
         successful = 0
         for city in cities:
-            print(f"- {city}")
+            print(f"\n- {city}"),
             try:
                 year = 2020
                 city_policy = {}
@@ -320,7 +331,7 @@ if __name__ == "__main__":
 
                 # Generate resources
                 if config.generate_resources:
-                    scorecard_functions.generate_resources(
+                    capture_return = scorecard_functions.generate_resources(
                         city,
                         phrases,
                         gpkg_hexes,
@@ -335,18 +346,21 @@ if __name__ == "__main__":
                     )
 
                 # instantiate template
-                scorecard_functions.generate_scorecard(
-                    city,
-                    phrases,
-                    threshold_scenarios=threshold_scenarios,
-                    city_policy=city_policy,
-                    configuration_file=configuration_file,
-                    template_sheet="template_web",
-                    language=language,
-                    font=font,
-                    by_city=config.by_city,
-                    by_language=config.by_language,
-                )
+                for template in templates:
+                    print(f" [{template}]")
+                    capture_return = scorecard_functions.generate_scorecard(
+                        city,
+                        phrases,
+                        threshold_scenarios=threshold_scenarios,
+                        city_policy=city_policy,
+                        configuration_file=configuration_file,
+                        template_sheet=template,
+                        language=language,
+                        font=font,
+                        by_city=config.by_city,
+                        by_language=config.by_language,
+                    )
+
                 successful += 1
             except Exception as e:
                 print(f"\t- Scorecard generation failed with error: {e}")

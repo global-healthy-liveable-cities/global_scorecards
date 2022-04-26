@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # import and set up functions
-import scorecard_functions
+import _data_setup
+import _report_functions
 from batlow import batlow_map
 
 # Set up commandline input parsing
@@ -55,14 +56,14 @@ parser.add_argument(
     "--by_city",
     action="store_true",
     default=True,
-    help="Save scorecard reports in city-specific sub-folders.",
+    help="Save reports in city-specific sub-folders.",
 )
 
 parser.add_argument(
     "--by_language",
     action="store_true",
     default=True,
-    help="Save scorecard reports in language-specific sub-folders (default).",
+    help="Save reports in language-specific sub-folders (default).",
 )
 
 parser.add_argument(
@@ -76,6 +77,16 @@ parser.add_argument(
     ),
 )
 
+parser.add_argument(
+    "--configuration",
+    default="_report_configuration.xlsx",
+    help=(
+        "An XLSX workbook containing spreadsheets detailing template layout(s), prose, fonts and city details "
+        "to be drawn upon when formatting reports."
+    ),
+)
+
+
 config = parser.parse_args()
 all_cities = [x.strip() for x in config.cities.split(",")]
 templates = [f"template_{x.strip()}" for x in config.templates.split(",")]
@@ -83,29 +94,10 @@ cmap = batlow_map
 
 if __name__ == "__main__":
     # load city parameters
-    with open("../../process/configuration/cities.json") as f:
+    with open(_data_setup.city_json_data) as f:
         city_data = json.load(f)
 
-    # Identify data sources
-    gpkg_hexes = os.path.abspath(
-        "../../process/data/output/global_indicators_hex_250m_2021-06-21.gpkg"
-    )
-    csv_city_indicators = os.path.abspath(
-        "../../process/data/output/global_indicators_city_2021-06-21.csv"
-    )
-    csv_hex_indicators = os.path.abspath(
-        "../../process/data/output/global_indicators_hex_250m_2021-06-21.csv"
-    )
-    csv_thresholds_data = os.path.abspath(
-        "data/Global Indicators 2020 - thresholds summary estimates.csv"
-    )
-    csv_walkability_data = os.path.abspath(
-        "data/Global Indicators - 2021-06-21 - percentage of population - walkability_above_median.csv"
-    )
-    xlsx_policy_data = os.path.abspath(
-        "data/Policy Figures 1 & 2_23 Dec_numerical.xlsx"
-    )
-    configuration_file = "scorecard_template_elements.xlsx"
+    configuration_file = config.configuration
     # Run all specified language-city permutations if auto-language detection
     if config.auto_language:
         languages = pd.read_excel(configuration_file, sheet_name="languages")
@@ -156,7 +148,7 @@ if __name__ == "__main__":
         plt.rcParams["font.family"] = prop.get_name()
         font = fonts.Font.values[0]
         # Set up main city indicators
-        df = pd.read_csv(csv_city_indicators)
+        df = pd.read_csv(_data_setup.csv_city_indicators)
         df.set_index("City", inplace=True)
         vars = {
             "pop_pct_access_500m_fresh_food_market_score": "Food market",
@@ -184,7 +176,7 @@ if __name__ == "__main__":
         }
 
         # Set up indicator min max summaries
-        df_extrema = pd.read_csv(csv_hex_indicators)
+        df_extrema = pd.read_csv(_data_setup.csv_hex_indicators)
         df_extrema.set_index("City", inplace=True)
         for k in threshold_lookup:
             threshold_lookup[k]["range"] = (
@@ -194,8 +186,8 @@ if __name__ == "__main__":
                 .values
             )
 
-        threshold_scenarios = scorecard_functions.setup_thresholds(
-            csv_thresholds_data, threshold_lookup
+        threshold_scenarios = _report_functions.setup_thresholds(
+            _data_setup.csv_thresholds_data, threshold_lookup
         )
 
         # Set up between city averages comparisons
@@ -208,98 +200,13 @@ if __name__ == "__main__":
         # Generate placeholder hero images, if not existing
         # if not os.path.exists('hero_images/{city}.png'):
 
-        # Retrieve and parse policy analysis data
-        policy_lookup = {
-            "worksheet": xlsx_policy_data,
-            "analyses": {
-                "Presence": {
-                    "sheet_name": "Figure 1 - transposed rounded",
-                    "column": "Sum",
-                },
-                "Checklist": {
-                    "sheet_name": "Figure 2 - Tuples",
-                    "column": "Overall measurability and evidency consistency (maximum /57)",
-                },
-                "PT": {"sheet_name": "Figure 2 - Tuples"},
-                "POS": {"sheet_name": "Figure 2 - Tuples"},
-            },
-            "parameters": {"header": [1], "nrows": 25, "index_col": 2},
-            "column_formatting": "Policies of interest",
-        }
-
-        df_labels = pd.read_excel(
-            policy_lookup["worksheet"],
-            sheet_name=policy_lookup["column_formatting"],
-            index_col=0,
-        )
-        df_labels = df_labels[~df_labels["Display"].isna()].sort_values(
-            by=["Display", "Order"]
+        df_policy = _report_functions.policy_data_setup(
+            policy_lookup=_data_setup.policy_lookup
         )
 
-        df_policy = {}
-
-        for policy_analysis in policy_lookup["analyses"]:
-            df_policy[policy_analysis] = pd.read_excel(
-                io=policy_lookup["worksheet"],
-                sheet_name=policy_lookup["analyses"][policy_analysis][
-                    "sheet_name"
-                ],
-                header=policy_lookup["parameters"]["header"],
-                nrows=policy_lookup["parameters"]["nrows"],
-                index_col=policy_lookup["parameters"]["index_col"],
-            )
-            if policy_analysis == "Presence":
-                # get percentage of policies meeting requirements stratified by income GDP groups
-                df_policy[f"{policy_analysis}_gdp"] = round(
-                    (
-                        100
-                        * df_policy["Presence"]
-                        .loc[:, df_policy["Presence"].columns[:-1]]
-                        .replace(0.5, 1)
-                        .groupby(
-                            df_policy["Presence"]["GDP"] == "High-income"
-                        )[df_policy["Presence"].columns[2:-1]]
-                        .mean()
-                        .transpose()
-                    ),
-                    0,
-                )
-                df_policy[f"{policy_analysis}_gdp"].columns = [
-                    "middle",
-                    "upper",
-                ]
-                # restrict to policies of interest
-                df_policy[f"{policy_analysis}_gdp"] = df_policy[
-                    f"{policy_analysis}_gdp"
-                ].loc[
-                    [
-                        x
-                        for x in df_labels.loc[
-                            df_labels["Display"] == "Presence"
-                        ].index
-                        if x in df_policy[f"{policy_analysis}_gdp"].index
-                    ]
-                ]
-                # format with short labels
-                df_policy[f"{policy_analysis}_gdp"].index = df_labels.loc[
-                    df_policy[f"{policy_analysis}_gdp"].index, "Label"
-                ].values
-            if policy_analysis in ["Presence", "Checklist"]:
-                # store overall rating for this analysis
-                df_policy[f"{policy_analysis}_rating"] = df_policy[
-                    policy_analysis
-                ].loc[:, policy_lookup["analyses"][policy_analysis]["column"]]
-            # only retain relevant columns for this analysis
-            df_policy[policy_analysis] = df_policy[policy_analysis][
-                df_labels[df_labels["Display"] == policy_analysis].index
-            ]
-            if policy_analysis != "Presence":
-                # parse checklist
-                df_policy[policy_analysis] = df_policy[policy_analysis].apply(
-                    lambda x: x.str.split(":"), axis=1
-                )
-
-        walkability_stats = pd.read_csv(csv_walkability_data, index_col="City")
+        walkability_stats = pd.read_csv(
+            _data_setup.csv_walkability_data, index_col="City"
+        )
 
         # Loop over cities
         successful = 0
@@ -308,7 +215,7 @@ if __name__ == "__main__":
             try:
                 year = 2020
                 city_policy = {}
-                for policy_analysis in policy_lookup["analyses"]:
+                for policy_analysis in _data_setup.policy_lookup["analyses"]:
                     city_policy[policy_analysis] = df_policy[
                         policy_analysis
                     ].loc[city]
@@ -325,16 +232,16 @@ if __name__ == "__main__":
                     city, "pct_walkability_above_median"
                 ]
                 # set up phrases
-                phrases = scorecard_functions.prepare_phrases(
+                phrases = _report_functions.prepare_phrases(
                     configuration_file, city, language
                 )
 
                 # Generate resources
                 if config.generate_resources:
-                    capture_return = scorecard_functions.generate_resources(
+                    capture_return = _report_functions.generate_resources(
                         city,
                         phrases,
-                        gpkg_hexes,
+                        _data_setup.gpkg_hexes,
                         df,
                         indicators,
                         comparisons,
@@ -348,7 +255,7 @@ if __name__ == "__main__":
                 # instantiate template
                 for template in templates:
                     print(f" [{template}]")
-                    capture_return = scorecard_functions.generate_scorecard(
+                    capture_return = _report_functions.generate_scorecard(
                         city,
                         phrases,
                         threshold_scenarios=threshold_scenarios,
@@ -363,6 +270,6 @@ if __name__ == "__main__":
 
                 successful += 1
             except Exception as e:
-                print(f"\t- Scorecard generation failed with error: {e}")
+                print(f"\t- Report generation failed with error: {e}")
 
         print(f"\n {successful}/{len(cities)} cities processed successfully!")

@@ -827,6 +827,37 @@ def prepare_pdf_fonts(pdf, configuration_file, language):
                     )
 
 
+def save_pdf_layout(
+    pdf, folder, template, language, city, by_city, by_language, filename
+):
+    """
+    Save a PDF report in city, language, and template specific folder locations.
+    """
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+
+    template_folder = f"{folder}/{template}"
+    if not os.path.exists(template_folder):
+        os.mkdir(template_folder)
+
+    paths = []
+    if by_city:
+        if not os.path.exists(f"{template_folder}/by_city"):
+            os.mkdir(f"{template_folder}/by_city")
+        paths.append(f"{template_folder}/by_city/{city}")
+
+    if by_language:
+        paths.append(f"{template_folder}/{language}")
+
+    for path in paths:
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        pdf.output(f"{path}/{filename}")
+
+    return f"Scorecard generated ({paths}): {filename}"
+
+
 def generate_scorecard(
     city,
     phrases,
@@ -1003,27 +1034,96 @@ def generate_scorecard(
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 
-    # Output scorecard pdf
-    if not os.path.exists("scorecards"):
-        os.mkdir("scorecards")
+    # Output report pdf
+    filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
+    capture_result = save_pdf_layout(
+        pdf,
+        folder="scorecards",
+        template=template_sheet.replace("template", ""),
+        language=language,
+        city=city,
+        by_city=by_city,
+        by_language=by_language,
+        filename=filename,
+    )
+    return capture_result
 
-    template_folder = f"scorecards/{template_sheet.replace('template','')}"
-    if not os.path.exists(template_folder):
-        os.mkdir(template_folder)
 
-    output_paths = []
-    if by_city:
-        if not os.path.exists(f"{template_folder}/by_city"):
-            os.mkdir(f"{template_folder}/by_city")
-        output_paths.append(f"{template_folder}/by_city/{city}")
+def policy_data_setup(policy_lookup):
+    """
+    Returns a pretty complicated dictionary of policy data,
+    formatted according to the policy lookup configuration json.
+    Should be simplified, really.
+    """
+    df_labels = pd.read_excel(
+        policy_lookup["worksheet"],
+        sheet_name=policy_lookup["column_formatting"],
+        index_col=0,
+    )
+    df_labels = df_labels[~df_labels["Display"].isna()].sort_values(
+        by=["Display", "Order"]
+    )
 
-    if by_language:
-        output_paths.append(f"{template_folder}/{language}")
+    df_policy = {}
 
-    for scorecard_path in output_paths:
-        if not os.path.exists(scorecard_path):
-            os.mkdir(scorecard_path)
-        scorecard_pdf_file = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
-        pdf.output(f"{scorecard_path}/{scorecard_pdf_file}")
-
-    return f"Scorecard generated ({output_paths}): {scorecard_pdf_file}"
+    for policy_analysis in policy_lookup["analyses"]:
+        df_policy[policy_analysis] = pd.read_excel(
+            io=policy_lookup["worksheet"],
+            sheet_name=policy_lookup["analyses"][policy_analysis][
+                "sheet_name"
+            ],
+            header=policy_lookup["parameters"]["header"],
+            nrows=policy_lookup["parameters"]["nrows"],
+            index_col=policy_lookup["parameters"]["index_col"],
+        )
+        if policy_analysis == "Presence":
+            # get percentage of policies meeting requirements stratified by income GDP groups
+            df_policy[f"{policy_analysis}_gdp"] = round(
+                (
+                    100
+                    * df_policy["Presence"]
+                    .loc[:, df_policy["Presence"].columns[:-1]]
+                    .replace(0.5, 1)
+                    .groupby(df_policy["Presence"]["GDP"] == "High-income")[
+                        df_policy["Presence"].columns[2:-1]
+                    ]
+                    .mean()
+                    .transpose()
+                ),
+                0,
+            )
+            df_policy[f"{policy_analysis}_gdp"].columns = [
+                "middle",
+                "upper",
+            ]
+            # restrict to policies of interest
+            df_policy[f"{policy_analysis}_gdp"] = df_policy[
+                f"{policy_analysis}_gdp"
+            ].loc[
+                [
+                    x
+                    for x in df_labels.loc[
+                        df_labels["Display"] == "Presence"
+                    ].index
+                    if x in df_policy[f"{policy_analysis}_gdp"].index
+                ]
+            ]
+            # format with short labels
+            df_policy[f"{policy_analysis}_gdp"].index = df_labels.loc[
+                df_policy[f"{policy_analysis}_gdp"].index, "Label"
+            ].values
+        if policy_analysis in ["Presence", "Checklist"]:
+            # store overall rating for this analysis
+            df_policy[f"{policy_analysis}_rating"] = df_policy[
+                policy_analysis
+            ].loc[:, policy_lookup["analyses"][policy_analysis]["column"]]
+        # only retain relevant columns for this analysis
+        df_policy[policy_analysis] = df_policy[policy_analysis][
+            df_labels[df_labels["Display"] == policy_analysis].index
+        ]
+        if policy_analysis != "Presence":
+            # parse checklist
+            df_policy[policy_analysis] = df_policy[policy_analysis].apply(
+                lambda x: x.str.split(":"), axis=1
+            )
+    return df_policy

@@ -894,7 +894,7 @@ def generate_scorecard(
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
 
-    if template_sheet == "template_web":
+    if template_sheet.startswith("template_web"):
         pdf = pdf_for_web(
             pdf,
             pages,
@@ -905,7 +905,7 @@ def generate_scorecard(
             threshold_scenarios,
             city_policy,
         )
-    elif template_sheet == "template_print":
+    elif template_sheet.startswith("template_print"):
         pdf = pdf_for_print(
             pdf,
             pages,
@@ -1127,15 +1127,7 @@ def pdf_for_print(
     template = FlexTemplate(pdf, elements=pages["3"])
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
-    ## Walkability plot
-    template[
-        "all_cities_walkability"
-    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
-    template["walkability_above_median_pct"] = phrases[
-        "walkability_above_median_pct"
-    ].format(
-        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
-    )
+
     ## Policy ratings
     template[
         "presence_rating"
@@ -1160,6 +1152,17 @@ def pdf_for_print(
                 length="short",
             )
 
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["4"])
+    ## Walkability plot
+    template[
+        "all_cities_walkability"
+    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    template["walkability_above_median_pct"] = phrases[
+        "walkability_above_median_pct"
+    ].format(
+        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+    )
     ## Walkable neighbourhood policy checklist
     for i, policy in enumerate(city_policy["Checklist"].index):
         row = i + 1
@@ -1171,7 +1174,7 @@ def pdf_for_print(
 
     # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["4"])
+    template = FlexTemplate(pdf, elements=pages["6"])
     ## Density plots
     template[
         "local_nh_population_density"
@@ -1207,7 +1210,7 @@ def pdf_for_print(
 
     # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["5"])
+    template = FlexTemplate(pdf, elements=pages["7"])
     template[
         "pct_access_500m_pt.jpg"
     ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
@@ -1228,7 +1231,7 @@ def pdf_for_print(
 
     # Set up last page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["6"])
+    template = FlexTemplate(pdf, elements=pages["8"])
 
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()

@@ -835,7 +835,7 @@ def save_pdf_layout(
     if not os.path.exists(folder):
         os.mkdir(folder)
 
-    template_folder = f"{folder}/{template}"
+    template_folder = f"{folder}/{template} reports"
     if not os.path.exists(template_folder):
         os.mkdir(template_folder)
 
@@ -919,17 +919,20 @@ def generate_scorecard(
 
     # Output report pdf
     filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
-    capture_result = save_pdf_layout(
-        pdf,
-        folder="scorecards",
-        template=template_sheet.replace("template", ""),
-        language=language,
-        city=city,
-        by_city=by_city,
-        by_language=by_language,
-        filename=filename,
-    )
-    return capture_result
+    if phrases["_export"] == 1:
+        capture_result = save_pdf_layout(
+            pdf,
+            folder="scorecards",
+            template=f'{template_sheet.replace("template", "")}',
+            language=language,
+            city=city,
+            by_city=by_city,
+            by_language=by_language,
+            filename=filename,
+        )
+        return capture_result
+    else:
+        return "Skipped."
 
 
 def pdf_for_web(
@@ -950,8 +953,6 @@ def pdf_for_web(
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
 
-    template["cover_image"] = "hero_images/cover_background.png"
-    # template["cover_logo"] = "logos/GOHSC_final.jpg"
     template.render()
 
     # Set up next page
@@ -973,6 +974,13 @@ def pdf_for_web(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
+
+    template[
+        "introduction"
+    ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
+        **phrases
+    )
+
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     ## Walkability plot
@@ -1077,8 +1085,6 @@ def pdf_for_web(
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["6"])
-
-    template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 
     return pdf
@@ -1102,8 +1108,6 @@ def pdf_for_print(
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
 
-    template["cover_image"] = "hero_images/cover_background.png"
-    template["cover_logo"] = "logos/GOHSC.jpg"
     template.render()
 
     # Set up next page
@@ -1125,8 +1129,12 @@ def pdf_for_print(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
-    ## Access profile plot
-    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+
+    template[
+        "introduction"
+    ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
+        **phrases
+    )
 
     ## Policy ratings
     template[
@@ -1135,9 +1143,18 @@ def pdf_for_print(
     template[
         "quality_rating"
     ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
-    template["city_header"] = phrases["city_name"]
+
+    ## Access profile plot
+    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["4"])
 
     ## City planning requirement presence (round 0.5 up to 1)
+    template["city_header"] = phrases["city_name"]
     policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
     for x in range(1, 7):
         # check presence
@@ -1152,8 +1169,11 @@ def pdf_for_print(
                 length="short",
             )
 
+    template.render()
+
+    # Set up next page
     pdf.add_page()
-    template = FlexTemplate(pdf, elements=pages["4"])
+    template = FlexTemplate(pdf, elements=pages["5"])
     ## Walkability plot
     template[
         "all_cities_walkability"

@@ -951,7 +951,7 @@ def pdf_for_web(
         template["credit_image1"] = phrases["credit_image1"]
 
     template["cover_image"] = "hero_images/cover_background.png"
-    template["cover_logo"] = "logos/GOHSC.jpg"
+    # template["cover_logo"] = "logos/GOHSC_final.jpg"
     template.render()
 
     # Set up next page

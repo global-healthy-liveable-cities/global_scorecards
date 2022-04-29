@@ -473,7 +473,7 @@ def generate_resources(
     comparisons,
     threshold_scenarios,
     city_policy,
-    xlsx_scorecard_template,
+    configuration_file,
     language,
     cmap,
 ):
@@ -618,10 +618,7 @@ def generate_resources(
 
 
 def pdf_template_setup(
-    template,
-    template_sheet="scorecard_template_elements",
-    font=None,
-    language="English",
+    template, template_sheet="template_web", font=None, language="English",
 ):
     """
     Takes a template xlsx sheet defining elements for use in fpdf2's FlexTemplate function.
@@ -699,12 +696,10 @@ def format_pages(pages, phrases):
     return pages
 
 
-def prepare_phrases(xlsx_scorecard_template, city, language):
-    languages = pd.read_excel(xlsx_scorecard_template, sheet_name="languages")
+def prepare_phrases(configuration_file, city, language):
+    languages = pd.read_excel(configuration_file, sheet_name="languages")
     phrases = json.loads(languages.set_index("name").to_json())[language]
-    city_details = pd.read_excel(
-        xlsx_scorecard_template, sheet_name="city_details"
-    )
+    city_details = pd.read_excel(configuration_file, sheet_name="city_details")
     city_details = json.loads(city_details.set_index("City").to_json())
     country_code = city_details["Country Code"][city]
     if language == "English" and country_code not in ["AU", "GB", "US"]:
@@ -754,12 +749,11 @@ def prepare_phrases(xlsx_scorecard_template, city, language):
         for e in city_exceptions:
             phrases[e] = city_exceptions[e].replace("|", "\n")
     for citation in citation_json:
-        phrases[citation] = (
-            citation_json[citation].replace("|", "\n").format(**phrases)
-        )
-    phrases["citation_doi"] = phrases["citation_doi"].format(
-        city=city, country=phrases["country"], language=phrases["vernacular"]
-    )
+        if citation != "citation_doi" or "citation_doi" not in phrases:
+            phrases[citation] = (
+                citation_json[citation].replace("|", "\n").format(**phrases)
+            )
+    phrases["citation_doi"] = phrases["citation_doi"].format(**phrases)
     return phrases
 
 
@@ -799,8 +793,8 @@ def wrap_sentences(words, limit=50, delimiter=""):
     return sentences
 
 
-def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):
-    fonts = pd.read_excel(xlsx_scorecard_template, sheet_name="fonts")
+def prepare_pdf_fonts(pdf, configuration_file, language):
+    fonts = pd.read_excel(configuration_file, sheet_name="fonts")
     fonts = (
         fonts.loc[
             fonts["Language"].isin(
@@ -832,14 +826,45 @@ def prepare_pdf_fonts(pdf, xlsx_scorecard_template, language):
                     )
 
 
+def save_pdf_layout(
+    pdf, folder, template, language, city, by_city, by_language, filename
+):
+    """
+    Save a PDF report in city, language, and template specific folder locations.
+    """
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+
+    template_folder = f"{folder}/{template} reports"
+    if not os.path.exists(template_folder):
+        os.mkdir(template_folder)
+
+    paths = []
+    if by_city:
+        if not os.path.exists(f"{template_folder}/by_city"):
+            os.mkdir(f"{template_folder}/by_city")
+        paths.append(f"{template_folder}/by_city/{city}")
+
+    if by_language:
+        paths.append(f"{template_folder}/{language}")
+
+    for path in paths:
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        pdf.output(f"{path}/{filename}")
+
+    return f"Scorecard generated ({paths}): {filename}"
+
+
 def generate_scorecard(
     city,
     phrases,
     city_policy,
     threshold_scenarios,
-    xlsx_scorecard_template,
+    configuration_file,
     language="English",
-    template_sheet="scorecard_template_elements",
+    template_sheet="template_web",
     font=None,
     by_city=False,
     by_language=True,
@@ -852,20 +877,74 @@ def generate_scorecard(
     locale = phrases["locale"]
     # Set up PDF document template pages
     pages = pdf_template_setup(
-        xlsx_scorecard_template, font=font, language=language
+        configuration_file,
+        template_sheet=template_sheet,
+        font=font,
+        language=language,
     )
     pages = format_pages(pages, phrases)
 
     # initialise PDF
-    pdf = FPDF(orientation="portrait", format="A4")
+    pdf = FPDF(orientation="portrait", format="A4", unit="mm")
 
     # set up fonts
-    prepare_pdf_fonts(pdf, xlsx_scorecard_template, language)
+    prepare_pdf_fonts(pdf, configuration_file, language)
 
     pdf.set_author(phrases["metadata_author"])
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
 
+    if template_sheet.startswith("template_web"):
+        pdf = pdf_for_web(
+            pdf,
+            pages,
+            city,
+            language,
+            locale,
+            phrases,
+            threshold_scenarios,
+            city_policy,
+        )
+    elif template_sheet.startswith("template_print"):
+        pdf = pdf_for_print(
+            pdf,
+            pages,
+            city,
+            language,
+            locale,
+            phrases,
+            threshold_scenarios,
+            city_policy,
+        )
+
+    # Output report pdf
+    filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
+    if phrases["_export"] == 1:
+        capture_result = save_pdf_layout(
+            pdf,
+            folder="scorecards",
+            template=f'{template_sheet.replace("template", "")}',
+            language=language,
+            city=city,
+            by_city=by_city,
+            by_language=by_language,
+            filename=filename,
+        )
+        return capture_result
+    else:
+        return "Skipped."
+
+
+def pdf_for_web(
+    pdf,
+    pages,
+    city,
+    language,
+    locale,
+    phrases,
+    threshold_scenarios,
+    city_policy,
+):
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
@@ -874,8 +953,6 @@ def generate_scorecard(
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
 
-    template["cover_image"] = "hero_images/cover_background.png"
-    template["cover_logo"] = "logos/GOHSC.jpg"
     template.render()
 
     # Set up next page
@@ -897,6 +974,13 @@ def generate_scorecard(
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
+
+    template[
+        "introduction"
+    ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
+        **phrases
+    )
+
     ## Access profile plot
     template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
     ## Walkability plot
@@ -1001,27 +1085,255 @@ def generate_scorecard(
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["6"])
+    template.render()
+
+    return pdf
+
+
+def pdf_for_print(
+    pdf,
+    pages,
+    city,
+    language,
+    locale,
+    phrases,
+    threshold_scenarios,
+    city_policy,
+):
+    # Set up Cover page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["1"])
+    if os.path.exists(f"hero_images/{city}-1.jpg"):
+        template["hero_image"] = f"hero_images/{city}-1.jpg"
+        template["hero_alt"] = ""
+        template["credit_image1"] = phrases["credit_image1"]
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["2"])
+    template["citations"] = phrases["citations"]
+    template["study_executive_names"] = phrases["study_executive_names"]
+    template["local_collaborators"] = template["local_collaborators"].format(
+        title_city=phrases["title_city"]
+    )
+    template["local_collaborators_names"] = phrases[
+        "local_collaborators_names"
+    ]
+    if phrases["translation_names"] is None:
+        template["translation"] = ""
+        template["translation_names"] = ""
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["3"])
+
+    template[
+        "introduction"
+    ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
+        **phrases
+    )
+
+    ## Policy ratings
+    template[
+        "presence_rating"
+    ] = f"cities/{city}/policy_presence_rating_{language}.jpg"
+    template[
+        "quality_rating"
+    ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
+
+    ## Access profile plot
+    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["4"])
+
+    ## City planning requirement presence (round 0.5 up to 1)
+    template["city_header"] = phrases["city_name"]
+    policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
+    for x in range(1, 7):
+        # check presence
+        template[f"policy_urban_text{x}_response"] = policy_indicators[
+            np.ceil(city_policy["Presence"][x - 1])
+        ]
+        # format percentage units according to locale
+        for gdp in ["middle", "upper"]:
+            template[f"policy_urban_text{x}_{gdp}"] = _pct(
+                float(city_policy["Presence_gdp"].iloc[x - 1][gdp]),
+                locale,
+                length="short",
+            )
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["5"])
+    ## Walkability plot
+    template[
+        "all_cities_walkability"
+    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    template["walkability_above_median_pct"] = phrases[
+        "walkability_above_median_pct"
+    ].format(
+        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+    )
+    ## Walkable neighbourhood policy checklist
+    for i, policy in enumerate(city_policy["Checklist"].index):
+        row = i + 1
+        for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
+            col = j + 1
+            template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["6"])
+    ## Density plots
+    template[
+        "local_nh_population_density"
+    ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
+
+    template[
+        "local_nh_intersection_density"
+    ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
+
+    ## Density threshold captions
+    for row in threshold_scenarios["data"].index:
+        template[row] = phrases[f"optimal_range - {row}"].format(
+            _pct(
+                fnum(
+                    threshold_scenarios["data"].loc[row, city], "0.0", locale
+                ),
+                locale,
+            ),
+            fnum(
+                threshold_scenarios["lower_bound"].loc[row].location,
+                "#,000",
+                locale,
+            ),
+            phrases["density_units"],
+        )
+
+    if os.path.exists(f"hero_images/{city}-2.jpg"):
+        template["hero_image_2"] = f"hero_images/{city}-2.jpg"
+        template["hero_alt_2"] = ""
+        template["credit_image2"] = phrases["credit_image2"]
+
+    template.render()
+
+    # Set up next page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["7"])
+    template[
+        "pct_access_500m_pt.jpg"
+    ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
+    template[
+        "pct_access_500m_public_open_space_large_score"
+    ] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
+    template["city_text"] = phrases[f"{city} - Summary"]
+
+    ## Checklist ratings for PT and POS
+    for analysis in ["PT", "POS"]:
+        for i, policy in enumerate(city_policy[analysis].index):
+            row = i + 1
+            for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
+                col = j + 1
+                template[f"policy_{analysis}_text{row}_response{col}"] = item
+
+    template.render()
+
+    # Set up last page
+    pdf.add_page()
+    template = FlexTemplate(pdf, elements=pages["8"])
 
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
 
-    # Output scorecard pdf
-    if not os.path.exists("scorecards"):
-        os.mkdir("scorecards")
+    return pdf
 
-    output_paths = []
-    if by_city:
-        if not os.path.exists("scorecards/by_city"):
-            os.mkdir("scorecards/by_city")
-        output_paths.append(f"scorecards/by_city/{city}")
 
-    if by_language:
-        output_paths.append(f"scorecards/{language}")
+def policy_data_setup(policy_lookup):
+    """
+    Returns a pretty complicated dictionary of policy data,
+    formatted according to the policy lookup configuration json.
+    Should be simplified, really.
+    """
+    df_labels = pd.read_excel(
+        policy_lookup["worksheet"],
+        sheet_name=policy_lookup["column_formatting"],
+        index_col=0,
+    )
+    df_labels = df_labels[~df_labels["Display"].isna()].sort_values(
+        by=["Display", "Order"]
+    )
 
-    for scorecard_path in output_paths:
-        if not os.path.exists(scorecard_path):
-            os.mkdir(scorecard_path)
-        scorecard_pdf_file = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
-        pdf.output(f"{scorecard_path}/{scorecard_pdf_file}")
+    df_policy = {}
 
-    return f"Scorecard generated ({output_paths}): {scorecard_pdf_file}"
+    for policy_analysis in policy_lookup["analyses"]:
+        df_policy[policy_analysis] = pd.read_excel(
+            io=policy_lookup["worksheet"],
+            sheet_name=policy_lookup["analyses"][policy_analysis][
+                "sheet_name"
+            ],
+            header=policy_lookup["parameters"]["header"],
+            nrows=policy_lookup["parameters"]["nrows"],
+            index_col=policy_lookup["parameters"]["index_col"],
+        )
+        if policy_analysis == "Presence":
+            # get percentage of policies meeting requirements stratified by income GDP groups
+            df_policy[f"{policy_analysis}_gdp"] = round(
+                (
+                    100
+                    * df_policy["Presence"]
+                    .loc[:, df_policy["Presence"].columns[:-1]]
+                    .replace(0.5, 1)
+                    .groupby(df_policy["Presence"]["GDP"] == "High-income")[
+                        df_policy["Presence"].columns[2:-1]
+                    ]
+                    .mean()
+                    .transpose()
+                ),
+                0,
+            )
+            df_policy[f"{policy_analysis}_gdp"].columns = [
+                "middle",
+                "upper",
+            ]
+            # restrict to policies of interest
+            df_policy[f"{policy_analysis}_gdp"] = df_policy[
+                f"{policy_analysis}_gdp"
+            ].loc[
+                [
+                    x
+                    for x in df_labels.loc[
+                        df_labels["Display"] == "Presence"
+                    ].index
+                    if x in df_policy[f"{policy_analysis}_gdp"].index
+                ]
+            ]
+            # format with short labels
+            df_policy[f"{policy_analysis}_gdp"].index = df_labels.loc[
+                df_policy[f"{policy_analysis}_gdp"].index, "Label"
+            ].values
+        if policy_analysis in ["Presence", "Checklist"]:
+            # store overall rating for this analysis
+            df_policy[f"{policy_analysis}_rating"] = df_policy[
+                policy_analysis
+            ].loc[:, policy_lookup["analyses"][policy_analysis]["column"]]
+        # only retain relevant columns for this analysis
+        df_policy[policy_analysis] = df_policy[policy_analysis][
+            df_labels[df_labels["Display"] == policy_analysis].index
+        ]
+        if policy_analysis != "Presence":
+            # parse checklist
+            df_policy[policy_analysis] = df_policy[policy_analysis].apply(
+                lambda x: x.str.split(":"), axis=1
+            )
+    return df_policy

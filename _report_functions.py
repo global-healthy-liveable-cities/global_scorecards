@@ -1,4 +1,8 @@
-# scorecard functions
+"""
+Report functions.
+
+Define functions used for formatting and saving indicator reports.
+"""
 import json
 import os
 from textwrap import wrap
@@ -18,6 +22,160 @@ from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+
+def get_and_setup_language_cities(config):
+    """Setup and return languages for given configuration."""
+    if config.auto_language:
+        languages = pd.read_excel(config.configuration, sheet_name="languages")
+        languages = languages.query(f"name in {cities}").dropna(
+            axis=1, how="all"
+        )
+        languages = languages[languages.columns[1:]].set_index("name")
+        # replace all city name variants with English equivalent for grouping purposes
+        for city in languages.index:
+            languages.loc[city][languages.loc[city].notnull()] = city
+        languages = (
+            languages[languages.columns]
+            .transpose()
+            .stack()
+            .groupby(level=0)
+            .apply(list)
+        )
+    else:
+        cities = [x.strip() for x in config.cities.split(",")]
+        languages = pd.Series([cities], index=[config.language])
+    return languages
+
+
+def get_and_setup_font(language, config):
+    """Setup and return font for given language configuration."""
+    fonts = pd.read_excel(config.configuration, sheet_name="fonts")
+    if language.replace(" (Auto-translation)", "") in fonts.Language.unique():
+        fonts = fonts.loc[
+            fonts["Language"] == language.replace(" (Auto-translation)", "")
+        ].fillna("")
+    else:
+        fonts = fonts.loc[fonts["Language"] == "default"].fillna("")
+    main_font = fonts.File.values[0].strip()
+    fm.fontManager.addfont(main_font)
+    prop = fm.FontProperties(fname=main_font)
+    fm.findfont(prop=prop, directory=main_font, rebuild_if_missing=True)
+    plt.rcParams["font.family"] = prop.get_name()
+    font = fonts.Font.values[0]
+    return font
+
+
+def generate_report_for_language(config, language, cities, indicators):
+    """Generate report for cities corresponding to language configuration."""
+    print(f"\n{language} language reports:")
+
+    # set up fonts
+    font = get_and_setup_font(language, config)
+
+    # Set up main city indicators
+    data_setup = indicators["report"]["data"]
+    df = pd.read_csv(_data_setup.csv_city_indicators)
+    df.set_index("City", inplace=True)
+    df = df.rename(columns=indicators["report"]["accessibility"])
+
+    # Set up indicator min max summaries
+    df_extrema = pd.read_csv(_data_setup.csv_hex_indicators)
+    df_extrema.set_index("City", inplace=True)
+    for k in indicators["report"]["thresholds"]:
+        indicators["report"]["thresholds"][k]["range"] = (
+            df_extrema[indicators["report"]["thresholds"][k]["field"]]
+            .describe()[["min", "max"]]
+            .astype(int)
+            .values
+        )
+
+    threshold_scenarios = setup_thresholds(
+        _data_setup.csv_thresholds_data, indicators["report"]["thresholds"]
+    )
+
+    # Set up between city averages comparisons
+    comparisons = {}
+    comparisons["access"] = {}
+    comparisons["access"]["p25"] = df[
+        indicators["report"]["accessibility"].values()
+    ].quantile(q=0.25)
+    comparisons["access"]["p50"] = df[
+        indicators["report"]["accessibility"].values()
+    ].median()
+    comparisons["access"]["p75"] = df[
+        indicators["report"]["accessibility"].values()
+    ].quantile(q=0.75)
+
+    # Generate placeholder hero images, if not existing
+    # if not os.path.exists('hero_images/{city}.png'):
+
+    df_policy = policy_data_setup(policy_lookup=_data_setup.policy_lookup)
+
+    walkability_stats = pd.read_csv(
+        _data_setup.csv_walkability_data, index_col="City"
+    )
+
+    # Loop over cities
+    successful = 0
+    for city in cities:
+        print(f"\n- {city}"),
+        try:
+            year = 2020
+            city_policy = {}
+            for policy_analysis in _data_setup.policy_lookup["analyses"]:
+                city_policy[policy_analysis] = df_policy[policy_analysis].loc[
+                    city
+                ]
+                if policy_analysis in ["Presence", "Checklist"]:
+                    city_policy[f"{policy_analysis}_rating"] = df_policy[
+                        f"{policy_analysis}_rating"
+                    ].loc[city]
+                    city_policy[f"{policy_analysis}_global"] = df_policy[
+                        f"{policy_analysis}_rating"
+                    ].describe()
+
+            city_policy["Presence_gdp"] = df_policy["Presence_gdp"]
+            threshold_scenarios["walkability"] = walkability_stats.loc[
+                city, "pct_walkability_above_median"
+            ]
+            # set up phrases
+            phrases = prepare_phrases(config, city, language)
+
+            # Generate resources
+            if config.generate_resources:
+                capture_return = generate_resources(
+                    city,
+                    phrases,
+                    _data_setup.gpkg_hexes,
+                    df,
+                    indicators["report"]["accessibility"].values(),
+                    comparisons,
+                    threshold_scenarios,
+                    city_policy,
+                    language,
+                    cmap,
+                )
+
+            # instantiate template
+            for template in templates:
+                print(f" [{template}]")
+                capture_return = generate_scorecard(
+                    city,
+                    phrases,
+                    threshold_scenarios=threshold_scenarios,
+                    city_policy=city_policy,
+                    config=config,
+                    template=template,
+                    language=language,
+                    font=font,
+                )
+
+            successful += 1
+        except Exception as e:
+            print(f"\t- Report generation failed with error: {e}")
+
+        print(f"\n {successful}/{len(cities)} cities processed successfully!")
 
 
 def fpdf2_mm_scale(mm):
@@ -300,6 +458,7 @@ def threshold_map(
     phrases={"north arrow": "N", "km": "km"},
     locale="en",
 ):
+    """Create threshold indicator map."""
     figsize = (width, height)
     textsize = 14
     fig, ax = plt.subplots(figsize=figsize)
@@ -375,7 +534,9 @@ def setup_thresholds(csv_thresholds_data, threshold_lookup, scenario="B"):
         lambda x: int(x[0:-1].split("(")[1].split(", ")[0])
     )
     threshold_lower_bound = threshold_lower_bound.set_index("description")
-    threshold_scenarios = threshold_scenarios.groupby(["description"]).sum()
+    threshold_scenarios = threshold_scenarios.groupby(["description"]).sum(
+        numeric_only=True
+    )
     threshold_scenarios = {
         "data": threshold_scenarios,
         "lookup": threshold_lookup,
@@ -473,7 +634,6 @@ def generate_resources(
     comparisons,
     threshold_scenarios,
     city_policy,
-    configuration_file,
     language,
     cmap,
 ):
@@ -618,7 +778,7 @@ def generate_resources(
 
 
 def pdf_template_setup(
-    template, template_sheet="template_web", font=None, language="English",
+    config, template="template_web", font=None, language="English",
 ):
     """
     Takes a template xlsx sheet defining elements for use in fpdf2's FlexTemplate function.
@@ -631,7 +791,7 @@ def pdf_template_setup(
     The function returns a dictionary of elements, indexed by page number strings.
     """
     # read in elements
-    elements = pd.read_excel(template, sheet_name=template_sheet)
+    elements = pd.read_excel(config.configuration, sheet_name=template)
     document_pages = elements.page.unique()
 
     # Conditional formatting to help avoid inappropriate line breaks and gaps in Tamil and Thai
@@ -676,6 +836,7 @@ def pdf_template_setup(
 
 
 def format_pages(pages, phrases):
+    """Format pages with phrases."""
     for page in pages:
         for i, item in enumerate(pages[page]):
             if item["name"] in phrases:
@@ -696,10 +857,13 @@ def format_pages(pages, phrases):
     return pages
 
 
-def prepare_phrases(configuration_file, city, language):
-    languages = pd.read_excel(configuration_file, sheet_name="languages")
+def prepare_phrases(config, city, language):
+    """Prepare dictionary for specific language translation given English phrase."""
+    languages = pd.read_excel(config.configuration, sheet_name="languages")
     phrases = json.loads(languages.set_index("name").to_json())[language]
-    city_details = pd.read_excel(configuration_file, sheet_name="city_details")
+    city_details = pd.read_excel(
+        config.configuration, sheet_name="city_details"
+    )
     city_details = json.loads(city_details.set_index("City").to_json())
     country_code = city_details["Country Code"][city]
     if language == "English" and country_code not in ["AU", "GB", "US"]:
@@ -757,18 +921,8 @@ def prepare_phrases(configuration_file, city, language):
     return phrases
 
 
-# def thai_wrap(text, wrap=True, len=50, engine="newmm", delimiter="\u200a"):
-# """
-# This function uses the pythainlp package to identify word boundaries in Thai prose, allowing subsequent joining of words
-# """
-# words = word_tokenize(text, engine="newmm")
-# if wrap:
-# return "\n".join(wrap_sentences(words, limit=len))
-# else:
-# return "\u200a".join(words)
-
-
 def wrap_sentences(words, limit=50, delimiter=""):
+    """Wrap sentences if exceeding limit."""
     sentences = []
     sentence = ""
     gap = len(delimiter)
@@ -793,8 +947,9 @@ def wrap_sentences(words, limit=50, delimiter=""):
     return sentences
 
 
-def prepare_pdf_fonts(pdf, configuration_file, language):
-    fonts = pd.read_excel(configuration_file, sheet_name="fonts")
+def prepare_pdf_fonts(pdf, config, language):
+    """Prepare PDF fonts."""
+    fonts = pd.read_excel(config.configuration, sheet_name="fonts")
     fonts = (
         fonts.loc[
             fonts["Language"].isin(
@@ -819,10 +974,7 @@ def prepare_pdf_fonts(pdf, configuration_file, language):
                 ]
                 if f"{f.Font.values[0]}{s}" not in pdf.fonts.keys():
                     pdf.add_font(
-                        f.Font.values[0],
-                        style=s,
-                        fname=f.File.values[0],
-                        uni=True,
+                        f.Font.values[0], style=s, fname=f.File.values[0]
                     )
 
 
@@ -862,12 +1014,10 @@ def generate_scorecard(
     phrases,
     city_policy,
     threshold_scenarios,
-    configuration_file,
+    config,
     language="English",
-    template_sheet="template_web",
+    template="template_web",
     font=None,
-    by_city=False,
-    by_language=True,
 ):
     """
     Format a PDF using the pyfpdf FPDF2 library, and drawing on definitions from a UTF-8 CSV file.
@@ -876,25 +1026,20 @@ def generate_scorecard(
     """
     locale = phrases["locale"]
     # Set up PDF document template pages
-    pages = pdf_template_setup(
-        configuration_file,
-        template_sheet=template_sheet,
-        font=font,
-        language=language,
-    )
+    pages = pdf_template_setup(config, "template_web", font, language,)
     pages = format_pages(pages, phrases)
 
     # initialise PDF
     pdf = FPDF(orientation="portrait", format="A4", unit="mm")
 
     # set up fonts
-    prepare_pdf_fonts(pdf, configuration_file, language)
+    prepare_pdf_fonts(pdf, config, language)
 
     pdf.set_author(phrases["metadata_author"])
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
 
-    if template_sheet.startswith("template_web"):
+    if template.startswith("template_web"):
         pdf = pdf_for_web(
             pdf,
             pages,
@@ -905,7 +1050,7 @@ def generate_scorecard(
             threshold_scenarios,
             city_policy,
         )
-    elif template_sheet.startswith("template_print"):
+    elif template.startswith("template_print"):
         pdf = pdf_for_print(
             pdf,
             pages,
@@ -923,11 +1068,11 @@ def generate_scorecard(
         capture_result = save_pdf_layout(
             pdf,
             folder="scorecards",
-            template=f'{template_sheet.replace("template", "")}',
+            template=f'{template.replace("template", "")}',
             language=language,
             city=city,
-            by_city=by_city,
-            by_language=by_language,
+            by_city=config.by_city,
+            by_language=config.by_language,
             filename=filename,
         )
         return capture_result
@@ -969,6 +1114,7 @@ def pdf_for_web(
     if phrases["translation_names"] is None:
         template["translation"] = ""
         template["translation_names"] = ""
+
     template.render()
 
     # Set up next page

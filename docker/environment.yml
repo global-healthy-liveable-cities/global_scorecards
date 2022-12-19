@@ -3,11 +3,18 @@ channels:
   - conda-forge
 dependencies:
   - python=3.9.*
-  - geopandas=0.10.2
-  - fiona<1.8.21
-  - pygeos=0.12.0
-  - osmnx=1.1.2
-  - descartes=1.1.*
-  - fpdf2=2.4.*
-  - openpyxl=3.0.9
+  - osmnx=1.2.3
+  - fpdf2=2.6.*
+  - openpyxl
   - babel
+  - cartopy
+  - contextily
+  - geoalchemy2
+  - pandana
+  - psycopg2
+  - pyyaml
+  - rasterio
+  - sphinx
+  - sphinxcontrib-bibtex<2.0.0
+  - sphinx_rtd_theme
+  - urbanaccess

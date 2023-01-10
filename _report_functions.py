@@ -47,7 +47,6 @@ def generate_report_for_language(
     """
     Generate report for a processed city in a given language.
     """
-    # try:
     city = config.city
     font = get_and_setup_font(language, config)
     # set up policies
@@ -55,54 +54,37 @@ def generate_report_for_language(
     # get city and grid summary data
     gpkg = regions[city]["gpkg"]
     layers = fiona.listlayers(gpkg)
-    gdf_city = gpd.read_file(
-        gpkg,
-        layer=[
-            l
-            for l in layers
-            if l.startswith(
-                regions[city]["city_summary"].strip(time.strftime("%Y-%m-%d"))
-            )
-        ][0],
-    )
-    gdf_grid = gpd.read_file(
-        gpkg,
-        layer=[
-            l
-            for l in layers
-            if l.startswith(
-                regions[city]["grid_summary"].strip(time.strftime("%Y-%m-%d"))
-            )
-        ][0],
-    )
-    ### a proposed empirical walkability-related target (not used):
-    ### Percentage of population who live in a neighbourhood with walkable access
-    ### to a food market, large public open space, and a public transport stop within 500 metres
-    ## indicators['report']['thresholds']['walkability_target'] = round(
-    ##    100*gdf_grid.query(
-    ##        'pct_access_500m_fresh_food_market_score == 100 and '
-    ##        'pct_access_500m_public_open_space_large_score == 100 and '
-    ##        'pct_access_500m_pt_any_score == 100'
-    ##        )['pop_est']\
-    ##            .sum()/gdf_grid['pop_est'].sum(),
-    ##    1)
-    #
-    # The below currently relates walkability to the GHSCIC 25 city median (as per study)
-    # returns tuple of GeoDataFrame and summary percentage for percentage of pop > median pct
-    gdf_grid = evaluate_comparative_walkability(
-        gdf_grid, indicators["report"]["walkability"]["ghscic_reference"]
+    gdfs = {}
+    for gdf in ["city", "grid"]:
+        gdfs[gdf] = gpd.read_file(
+            gpkg,
+            layer=[
+                layer
+                for layer in layers
+                if layer.startswith(
+                    regions[city][f"{gdf}_summary"].strip(
+                        time.strftime("%Y-%m-%d")
+                    )
+                )
+            ][0],
+        )
+    # The below currently relates walkability to specified reference
+    # (e.g. the GHSCIC 25 city median, following standardisation using
+    # 25-city mean and standard deviation for sub-indicators)
+    gdfs["grid"] = evaluate_comparative_walkability(
+        gdfs["grid"], indicators["report"]["walkability"]["ghscic_reference"]
     )
     indicators["report"]["walkability"][
         "walkability_above_median_pct"
     ] = evaluate_threshold_pct(
-        gdf_grid,
+        gdfs["grid"],
         "all_cities_walkability",
         ">",
         indicators["report"]["walkability"]["ghscic_walkability_reference"],
     )
     for i in indicators["report"]["thresholds"]:
         indicators["report"]["thresholds"][i]["pct"] = evaluate_threshold_pct(
-            gdf_grid,
+            gdfs["grid"],
             indicators["report"]["thresholds"][i]["field"],
             indicators["report"]["thresholds"][i]["relationship"],
             indicators["report"]["thresholds"][i]["criteria"],
@@ -113,8 +95,8 @@ def generate_report_for_language(
     if config.generate_resources:
         capture_return = generate_resources(
             config,
-            gdf_city,
-            gdf_grid,
+            gdfs["city"],
+            gdfs["grid"],
             phrases,
             indicators,
             regions,
@@ -129,8 +111,6 @@ def generate_report_for_language(
             config, phrases, indicators, city_policy, language, template, font,
         )
     print(capture_return)
-    # except Exception as e:
-    # print(f"\t- Report generation failed with error: {e}")
 
 
 def get_and_setup_font(language, config):
@@ -1134,7 +1114,7 @@ def pdf_for_web(
     ## Walkable neighbourhood policy checklist
     for i, policy in enumerate(city_policy["Checklist"].index):
         row = i + 1
-        for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
+        for j, item in enumerate([x for x in city_policy["Checklist"][i]]):
             col = j + 1
             template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
     template.render()
@@ -1185,7 +1165,7 @@ def pdf_for_web(
     for analysis in ["PT", "POS"]:
         for i, policy in enumerate(city_policy[analysis].index):
             row = i + 1
-            for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
+            for j, item in enumerate([x for x in city_policy[analysis][i]]):
                 col = j + 1
                 template[f"policy_{analysis}_text{row}_response{col}"] = item
     template.render()

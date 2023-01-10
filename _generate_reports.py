@@ -76,18 +76,6 @@ if not os.path.exists(config.city_path):
         "\nPlease ensure city has been successfully processed before continuing\n"
     )
 
-# # for debugging only
-# languages = _report_functions.get_and_setup_language_cities(config)
-# language = 'English'
-
-# _report_functions.generate_report_for_language(
-# config,
-# language,
-# indicators,
-# regions,
-# policies
-# )
-
 
 def main():
     languages = _report_functions.get_and_setup_language_cities(config)

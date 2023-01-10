@@ -80,7 +80,6 @@ if not os.path.exists(config.city_path):
 def main():
     languages = _report_functions.get_and_setup_language_cities(config)
     for language in languages:
-        # print(f"\{language} language reports:")
         _report_functions.generate_report_for_language(
             config, language, indicators, regions, policies
         )

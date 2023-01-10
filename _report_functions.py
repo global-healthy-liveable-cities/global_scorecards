@@ -5,8 +5,10 @@ Define functions used for formatting and saving indicator reports.
 """
 import json
 import os
+import time
 from textwrap import wrap
 
+import fiona
 import geopandas as gpd
 import matplotlib as mpl
 import matplotlib.font_manager as fm
@@ -23,29 +25,112 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+from batlow import batlow_map as cmap
+
 
 def get_and_setup_language_cities(config):
     """Setup and return languages for given configuration."""
     if config.auto_language:
         languages = pd.read_excel(config.configuration, sheet_name="languages")
-        languages = languages.query(f"name in {cities}").dropna(
+        languages = languages[languages["name"] == config.city].dropna(
             axis=1, how="all"
         )
-        languages = languages[languages.columns[1:]].set_index("name")
-        # replace all city name variants with English equivalent for grouping purposes
-        for city in languages.index:
-            languages.loc[city][languages.loc[city].notnull()] = city
-        languages = (
-            languages[languages.columns]
-            .transpose()
-            .stack()
-            .groupby(level=0)
-            .apply(list)
-        )
+        languages = list(languages.columns[2:])
     else:
-        cities = [x.strip() for x in config.cities.split(",")]
-        languages = pd.Series([cities], index=[config.language])
+        languages = [config.language]
     return languages
+
+
+def generate_report_for_language(
+    config, language, indicators, regions, policies
+):
+    """
+    Generate report for a processed city in a given language.
+    """
+    # try:
+    city = config.city
+    font = get_and_setup_font(language, config)
+    # set up policies
+    city_policy = policy_data_setup(policies, regions[city]["policy_review"])
+    # get city and grid summary data
+    gpkg = regions[city]["gpkg"]
+    layers = fiona.listlayers(gpkg)
+    gdf_city = gpd.read_file(
+        gpkg,
+        layer=[
+            l
+            for l in layers
+            if l.startswith(
+                regions[city]["city_summary"].strip(time.strftime("%Y-%m-%d"))
+            )
+        ][0],
+    )
+    gdf_grid = gpd.read_file(
+        gpkg,
+        layer=[
+            l
+            for l in layers
+            if l.startswith(
+                regions[city]["grid_summary"].strip(time.strftime("%Y-%m-%d"))
+            )
+        ][0],
+    )
+    ### a proposed empirical walkability-related target (not used):
+    ### Percentage of population who live in a neighbourhood with walkable access
+    ### to a food market, large public open space, and a public transport stop within 500 metres
+    ## indicators['report']['thresholds']['walkability_target'] = round(
+    ##    100*gdf_grid.query(
+    ##        'pct_access_500m_fresh_food_market_score == 100 and '
+    ##        'pct_access_500m_public_open_space_large_score == 100 and '
+    ##        'pct_access_500m_pt_any_score == 100'
+    ##        )['pop_est']\
+    ##            .sum()/gdf_grid['pop_est'].sum(),
+    ##    1)
+    #
+    # The below currently relates walkability to the GHSCIC 25 city median (as per study)
+    # returns tuple of GeoDataFrame and summary percentage for percentage of pop > median pct
+    gdf_grid = evaluate_comparative_walkability(
+        gdf_grid, indicators["report"]["walkability"]["ghscic_reference"]
+    )
+    indicators["report"]["walkability"][
+        "walkability_above_median_pct"
+    ] = evaluate_threshold_pct(
+        gdf_grid,
+        "all_cities_walkability",
+        ">",
+        indicators["report"]["walkability"]["ghscic_walkability_reference"],
+    )
+    for i in indicators["report"]["thresholds"]:
+        indicators["report"]["thresholds"][i]["pct"] = evaluate_threshold_pct(
+            gdf_grid,
+            indicators["report"]["thresholds"][i]["field"],
+            indicators["report"]["thresholds"][i]["relationship"],
+            indicators["report"]["thresholds"][i]["criteria"],
+        )
+    # set up phrases
+    phrases = prepare_phrases(config, city, language, regions)
+    # Generate resources
+    if config.generate_resources:
+        capture_return = generate_resources(
+            config,
+            gdf_city,
+            gdf_grid,
+            phrases,
+            indicators,
+            regions,
+            city_policy,
+            language,
+            cmap,
+        )
+    # instantiate template
+    for template in config.templates:
+        print(f" [{template}]")
+        capture_return = generate_scorecard(
+            config, phrases, indicators, city_policy, language, template, font,
+        )
+    print(capture_return)
+    # except Exception as e:
+    # print(f"\t- Report generation failed with error: {e}")
 
 
 def get_and_setup_font(language, config):
@@ -66,116 +151,170 @@ def get_and_setup_font(language, config):
     return font
 
 
-def generate_report_for_language(config, language, cities, indicators):
-    """Generate report for cities corresponding to language configuration."""
-    print(f"\n{language} language reports:")
+def policy_data_setup(policies, policy_review):
+    """
+    Returns a dictionary of policy data
+    """
+    review = pd.read_excel(policy_review, index_col=0)
+    df_policy = {}
+    # Presence score
+    df_policy["Presence_rating"] = review.loc["Score"]["Policy identified"]
+    # Quality score
+    df_policy["Checklist_rating"] = review.loc["Score"]["Quality"]
+    # Presence
+    df_policy["Presence"] = review.loc[
+        [p["Policy"] for p in policies if p["Display"] == "Presence"]
+    ].apply(lambda x: x["Weight"] * x["Policy identified"], axis=1)
+    # GDP
+    df_policy["Presence_gdp"] = pd.DataFrame(
+        [
+            {
+                c: p[c]
+                for c in p
+                if c
+                in ["Label", "gdp_comparison_middle", "gdp_comparison_upper"]
+            }
+            for p in policies
+            if p["Display"] == "Presence"
+        ]
+    )
+    df_policy["Presence_gdp"].columns = ["Policy", "middle", "upper"]
+    df_policy["Presence_gdp"].set_index("Policy", inplace=True)
+    # Urban Checklist
+    df_policy["Checklist"] = review.loc[
+        [p["Policy"] for p in policies if p["Display"] == "Checklist"]
+    ]["Checklist"]
+    # Public open space checklist
+    df_policy["POS"] = review.loc[
+        [p["Policy"] for p in policies if p["Display"] == "POS"]
+    ]["Checklist"]
+    # Public transport checklist
+    df_policy["PT"] = review.loc[
+        [p["Policy"] for p in policies if p["Display"] == "PT"]
+    ]["Checklist"]
+    return df_policy
 
-    # set up fonts
-    font = get_and_setup_font(language, config)
 
-    # Set up main city indicators
-    data_setup = indicators["report"]["data"]
-    df = pd.read_csv(_data_setup.csv_city_indicators)
-    df.set_index("City", inplace=True)
-    df = df.rename(columns=indicators["report"]["accessibility"])
+def evaluate_comparative_walkability(gdf_grid, reference):
+    # Evaluate walkability relative to 25-city study reference
+    for x in reference:
+        gdf_grid[f"z_{x}"] = (gdf_grid[x] - reference[x]["mean"]) / reference[
+            x
+        ]["sd"]
+    gdf_grid["all_cities_walkability"] = sum(
+        [gdf_grid[f"z_{x}"] for x in reference]
+    )
+    return gdf_grid
 
-    # Set up indicator min max summaries
-    df_extrema = pd.read_csv(_data_setup.csv_hex_indicators)
-    df_extrema.set_index("City", inplace=True)
-    for k in indicators["report"]["thresholds"]:
-        indicators["report"]["thresholds"][k]["range"] = (
-            df_extrema[indicators["report"]["thresholds"][k]["field"]]
-            .describe()[["min", "max"]]
-            .astype(int)
-            .values
+
+def evaluate_threshold_pct(
+    gdf_grid, indicator, relationship, reference, population="pop_est"
+):
+    """
+    Evaluate whether a pandas series meets a threshold criteria (eg. '<' or '>'
+    """
+    percentage = round(
+        100
+        * gdf_grid.query(f"{indicator} {relationship} {reference}")[
+            population
+        ].sum()
+        / gdf_grid[population].sum(),
+        1,
+    )
+    return percentage
+
+
+def generate_resources(
+    config,
+    gdf_city,
+    gdf_grid,
+    phrases,
+    indicators,
+    regions,
+    city_policy,
+    language,
+    cmap,
+):
+    """
+    The function prepares a series of image resources required for the global
+    indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
+    """
+    figure_path = f"{config.city_path}/figures"
+    locale = phrases["locale"]
+    city_stats = compile_city_stats(gdf_city, indicators, phrases)
+    if not os.path.exists(figure_path):
+        os.mkdir(figure_path)
+    # Spatial access liveability profile
+    li_profile(
+        city_stats=city_stats,
+        title=phrases["Population % with access within 500m to..."],
+        cmap=cmap,
+        phrases=phrases,
+        path=f"{figure_path}/access_profile_{language}.jpg",
+    )
+    ## constrain extreme outlying walkability for representation
+    gdf_grid["all_cities_walkability"] = gdf_grid[
+        "all_cities_walkability"
+    ].apply(lambda x: -6 if x < -6 else (6 if x > 6 else x))
+    # Spatial distribution maps
+    spatial_maps = compile_spatial_map_info(
+        indicators["report"]["spatial_distribution_figures"],
+        gdf_city,
+        phrases,
+        locale,
+        language=language,
+    )
+    for f in spatial_maps:
+        spatial_dist_map(
+            gdf_grid,
+            column=f,
+            range=spatial_maps[f]["range"],
+            label=spatial_maps[f]["label"],
+            tick_labels=spatial_maps[f]["tick_labels"],
+            cmap=cmap,
+            path=f'{figure_path}/{spatial_maps[f]["outfile"]}',
+            phrases=phrases,
+            locale=locale,
         )
-
-    threshold_scenarios = setup_thresholds(
-        _data_setup.csv_thresholds_data, indicators["report"]["thresholds"]
+    # Threshold maps
+    for scenario in indicators["report"]["thresholds"]:
+        threshold_map(
+            gdf_grid,
+            column=indicators["report"]["thresholds"][scenario]["field"],
+            scale=indicators["report"]["thresholds"][scenario]["scale"],
+            comparison=indicators["report"]["thresholds"][scenario][
+                "criteria"
+            ],
+            label=(
+                f"{phrases[indicators['report']['thresholds'][scenario]['title']]} ({phrases['density_units']})"
+            ),
+            cmap=cmap,
+            path=f"{figure_path}/{indicators['report']['thresholds'][scenario]['field']}_{language}.jpg",
+            phrases=phrases,
+            locale=locale,
+        )
+    # Policy ratings
+    policy_rating(
+        range=[0, 24],
+        score=city_policy["Presence_rating"],
+        comparison=indicators["report"]["policy"]["comparisons"]["presence"],
+        label="",
+        comparison_label=phrases["25 city comparison"],
+        cmap=cmap,
+        locale=locale,
+        path=f"{figure_path}/policy_presence_rating_{language}.jpg",
     )
-
-    # Set up between city averages comparisons
-    comparisons = {}
-    comparisons["access"] = {}
-    comparisons["access"]["p25"] = df[
-        indicators["report"]["accessibility"].values()
-    ].quantile(q=0.25)
-    comparisons["access"]["p50"] = df[
-        indicators["report"]["accessibility"].values()
-    ].median()
-    comparisons["access"]["p75"] = df[
-        indicators["report"]["accessibility"].values()
-    ].quantile(q=0.75)
-
-    # Generate placeholder hero images, if not existing
-    # if not os.path.exists('hero_images/{city}.png'):
-
-    df_policy = policy_data_setup(policy_lookup=_data_setup.policy_lookup)
-
-    walkability_stats = pd.read_csv(
-        _data_setup.csv_walkability_data, index_col="City"
+    policy_rating(
+        range=[0, 57],
+        score=city_policy["Checklist_rating"],
+        comparison=indicators["report"]["policy"]["comparisons"]["quality"],
+        label="",
+        comparison_label=phrases["25 city comparison"],
+        cmap=cmap,
+        locale=locale,
+        path=f"{figure_path}/policy_checklist_rating_{language}.jpg",
     )
-
-    # Loop over cities
-    successful = 0
-    for city in cities:
-        print(f"\n- {city}"),
-        try:
-            year = 2020
-            city_policy = {}
-            for policy_analysis in _data_setup.policy_lookup["analyses"]:
-                city_policy[policy_analysis] = df_policy[policy_analysis].loc[
-                    city
-                ]
-                if policy_analysis in ["Presence", "Checklist"]:
-                    city_policy[f"{policy_analysis}_rating"] = df_policy[
-                        f"{policy_analysis}_rating"
-                    ].loc[city]
-                    city_policy[f"{policy_analysis}_global"] = df_policy[
-                        f"{policy_analysis}_rating"
-                    ].describe()
-
-            city_policy["Presence_gdp"] = df_policy["Presence_gdp"]
-            threshold_scenarios["walkability"] = walkability_stats.loc[
-                city, "pct_walkability_above_median"
-            ]
-            # set up phrases
-            phrases = prepare_phrases(config, city, language)
-
-            # Generate resources
-            if config.generate_resources:
-                capture_return = generate_resources(
-                    city,
-                    phrases,
-                    _data_setup.gpkg_hexes,
-                    df,
-                    indicators["report"]["accessibility"].values(),
-                    comparisons,
-                    threshold_scenarios,
-                    city_policy,
-                    language,
-                    cmap,
-                )
-
-            # instantiate template
-            for template in templates:
-                print(f" [{template}]")
-                capture_return = generate_scorecard(
-                    city,
-                    phrases,
-                    threshold_scenarios=threshold_scenarios,
-                    city_policy=city_policy,
-                    config=config,
-                    template=template,
-                    language=language,
-                    font=font,
-                )
-
-            successful += 1
-        except Exception as e:
-            print(f"\t- Report generation failed with error: {e}")
-
-        print(f"\n {successful}/{len(cities)} cities processed successfully!")
+    return figure_path
 
 
 def fpdf2_mm_scale(mm):
@@ -186,6 +325,71 @@ def fpdf2_mm_scale(mm):
 
 def _pct(value, locale, length="short"):
     return format_unit(value, "percent", locale=locale, length=length)
+
+
+def compile_city_stats(gdf_city, indicators, phrases):
+    """Compile a set of city statistics with comparisons, given a processed geodataframe of city summary statistics and a dictionary of indicators including reference percentiles."""
+    city_stats = {}
+    city_stats["access"] = gdf_city[
+        indicators["report"]["accessibility"].keys()
+    ].transpose()[0]
+    city_stats["access"].index = [
+        indicators["report"]["accessibility"][x]["title"]
+        if city_stats["access"][x] is not None
+        else f"{indicators['report']['accessibility'][x]['title']} (not evaluated)"
+        for x in city_stats["access"].index
+    ]
+    city_stats["access"] = city_stats["access"].fillna(
+        0
+    )  # for display purposes
+    city_stats["comparisons"] = {
+        indicators["report"]["accessibility"][x]["title"]: indicators[
+            "report"
+        ]["accessibility"][x]["ghscic_reference"]
+        for x in indicators["report"]["accessibility"]
+    }
+    city_stats["percentiles"] = {}
+    for percentile in ["p25", "p50", "p75"]:
+        city_stats["percentiles"][percentile] = [
+            city_stats["comparisons"][x][percentile]
+            for x in city_stats["comparisons"].keys()
+        ]
+    city_stats["access"].index = [
+        phrases[x] for x in city_stats["access"].index
+    ]
+    return city_stats
+
+
+def compile_spatial_map_info(
+    spatial_distribution_figures, gdf_city, phrases, locale, language
+):
+    """Compile required information to produce spatial distribution figures, given the dictionary:  indicators['report']['spatial_distribution_figures']"""
+    # effectively deep copy the supplied dictionary so its not mutable
+    spatial_maps = json.loads(json.dumps(spatial_distribution_figures))
+    for i in spatial_maps:
+        for text in ["label", "outfile"]:
+            spatial_maps[i][text] = spatial_maps[i][text].format(**locals())
+        if spatial_maps[i]["tick_labels"] is not None:
+            spatial_maps[i]["tick_labels"] = [
+                x.format(**{"phrases": phrases})
+                for x in spatial_maps[i]["tick_labels"]
+            ]
+        if i.startswith("pct_"):
+            city_summary_percent = _pct(
+                fnum(gdf_city[f"pop_{i}"].fillna(0)[0], "0.0", locale), locale
+            )
+            spatial_maps[i][
+                "label"
+            ] = f'{spatial_maps[i]["label"]} ({city_summary_percent})'
+    if gdf_city["pop_pct_access_500m_pt_gtfs_freq_20_score"][0] is None:
+        spatial_maps["pct_access_500m_pt_any_score"] = spatial_maps.pop(
+            "pct_access_500m_pt_gtfs_freq_20_score"
+        )
+        spatial_maps["pct_access_500m_pt_any_score"]["label"] = (
+            f'{phrases["Percentage of population with access to public transport"]}\n'
+            f'({_pct(fnum(gdf_city["pop_pct_access_500m_pt_any_score"][0],"0.0",locale),locale)})'
+        )
+    return spatial_maps
 
 
 def add_scalebar(
@@ -258,7 +462,6 @@ def add_localised_north_arrow(
 ## radar chart
 def li_profile(
     city_stats,
-    comparisons,
     title,
     cmap,
     path,
@@ -273,18 +476,17 @@ def li_profile(
     -- A python code blog post by Yan Holtz, in turn expanding on work of Tomás Capretto and Tobias Stadler.
 
     Arguments:
-        city_stats  A pandas series of indicators for a particular city
-        comparisons A dictionary of pandas series IQR point summaries (p25, p50 and p75)
+        city_stats  A pandas series of indicators for a particular city, including comparisons
         cmap A colour map
     """
     figsize = (width, height)
     # Values for the x axis
     ANGLES = np.linspace(
-        0.15, 2 * np.pi - 0.05, len(city_stats), endpoint=False
+        0.15, 2 * np.pi - 0.05, len(city_stats["access"]), endpoint=False
     )
-    VALUES = city_stats.values
-    COMPARISON = comparisons["p50"].values
-    INDICATORS = city_stats.index
+    VALUES = city_stats["access"].values
+    COMPARISON = city_stats["percentiles"]["p50"]
+    INDICATORS = city_stats["access"].index
     # Colours
     GREY12 = "#1f1f1f"
     norm = mpl.colors.Normalize(vmin=0, vmax=100)
@@ -302,7 +504,11 @@ def li_profile(
     ax.bar(ANGLES, VALUES, color=COLORS, alpha=0.9, width=0.52, zorder=10)
     # Add interquartile comparison reference lines
     ax.vlines(
-        ANGLES, comparisons["p25"], comparisons["p75"], color=GREY12, zorder=11
+        ANGLES,
+        city_stats["percentiles"]["p25"],
+        city_stats["percentiles"]["p75"],
+        color=GREY12,
+        zorder=11,
     )
     # Add dots to represent the mean gain
     comparison_text = "\n".join(
@@ -503,48 +709,6 @@ def threshold_map(
     plt.close(fig)
 
 
-def setup_thresholds(csv_thresholds_data, threshold_lookup, scenario="B"):
-    """
-    A help script for identifying lower and upper bound thresholds associated with specific policy scenarios
-    """
-    thresholds = pd.read_csv(csv_thresholds_data)
-    cities = thresholds.columns[1:]
-    # Threshold analysis
-    threshold_index_cols = ["scenario", "description", "location"]
-    thresholds["scenario"] = thresholds.iloc[:, 0].apply(
-        lambda x: x.split(" - ")[0].split("_")[-1]
-    )
-    thresholds["description"] = thresholds.iloc[:, 0].apply(
-        lambda x: x.split(" - ")[1]
-    )
-    thresholds["location"] = thresholds.iloc[:, 0].apply(
-        lambda x: x.split(" - ")[2]
-    )
-    thresholds = thresholds[threshold_index_cols + list(cities)]
-    # Extract threshold scenarios from variables
-    threshold_scenarios = thresholds.loc[
-        ~(thresholds.location.str.startswith("below"))
-        & (thresholds.scenario == scenario)
-    ]
-    threshold_lower_bound = threshold_scenarios.loc[
-        threshold_scenarios.location.str.startswith("within"),
-        ["description", "location"],
-    ]
-    threshold_lower_bound["location"] = threshold_lower_bound.location.apply(
-        lambda x: int(x[0:-1].split("(")[1].split(", ")[0])
-    )
-    threshold_lower_bound = threshold_lower_bound.set_index("description")
-    threshold_scenarios = threshold_scenarios.groupby(["description"]).sum(
-        numeric_only=True
-    )
-    threshold_scenarios = {
-        "data": threshold_scenarios,
-        "lookup": threshold_lookup,
-        "lower_bound": threshold_lower_bound,
-    }
-    return threshold_scenarios
-
-
 def policy_rating(
     range,
     score,
@@ -577,12 +741,12 @@ def policy_rating(
     if comparison is None:
         ax.xaxis.set_ticks([])
     else:
-        ax.xaxis.set_major_locator(ticker.FixedLocator([comparison["50%"]]))
+        ax.xaxis.set_major_locator(ticker.FixedLocator([comparison]))
         # ax.set_xticklabels([comparison_label])
         ax.set_xticklabels([""])
         ax.tick_params(labelsize=textsize)
         ax.plot(
-            comparison["50%"],
+            comparison,
             0,
             marker="v",
             color="black",
@@ -590,10 +754,10 @@ def policy_rating(
             zorder=10,
             clip_on=False,
         )
-        if comparison["50%"] < 7:
+        if comparison < 7:
             for t in ax.get_yticklabels():
                 t.set_horizontalalignment("left")
-        if comparison["50%"] > 18:
+        if comparison > 18:
             for t in ax.get_yticklabels():
                 t.set_horizontalalignment("right")
     # Format City ticks
@@ -616,165 +780,13 @@ def policy_rating(
     )
     ax_city.tick_params(labelsize=textsize)
     # return figure with final styling
-    xlabel = f"{comparison_label} ({fnum(comparison['50%'],'0.0',locale)})"
+    xlabel = f"{comparison_label} ({fnum(comparison,'0.0',locale)})"
     ax.set_xlabel(
         xlabel, labelpad=0.5, fontsize=textsize,
     )
     plt.tight_layout()
     fig.savefig(path, dpi=dpi)
     plt.close(fig)
-
-
-def generate_resources(
-    city,
-    phrases,
-    gpkg_hexes,
-    df,
-    indicators,
-    comparisons,
-    threshold_scenarios,
-    city_policy,
-    language,
-    cmap,
-):
-    """
-    The function prepares a series of image resources required for the global
-    indicator score cards.  These are located in a city specific path, (eg. cities/Melbourne).  This city_path string variable is returned.
-    """
-    locale = phrases["locale"]
-    # read city data
-    gdf = gpd.read_file(gpkg_hexes, layer=city.lower().replace(" ", "_"))
-    gdf["all_cities_walkability"] = gdf["all_cities_walkability"].apply(
-        lambda x: -6 if x < -6 else (6 if x > 6 else x)
-    )
-    # create output directory for plots
-    city_path = f"./cities/{city}"
-    if not os.path.exists("cities"):
-        os.mkdir("cities")
-    if not os.path.exists(city_path):
-        os.mkdir(city_path)
-    # Spatial access liveability profile
-    city_stats = {}
-    city_stats["access"] = df.loc[city, indicators]
-    city_stats_index = city_stats["access"].index.tolist()
-    for i, item in enumerate(city_stats["access"].index):
-        if str(city_stats["access"][i]) == "nan":
-            city_stats_index[
-                i
-            ] = f"{city_stats['access'].index[i]} (not evaluated)"
-    city_stats["access"].index = city_stats_index
-    city_stats["access"].index = [
-        phrases[x] for x in city_stats["access"].index
-    ]
-    # city stats have NA replaced with zero for li profile to facilitate plotting of comparison
-    # it is not that there is no regular pt..
-    profile_title = phrases["Population % with access within 500m to..."]
-    li_profile(
-        city_stats=city_stats["access"].fillna(0),
-        comparisons=comparisons["access"],
-        title=profile_title,
-        cmap=cmap,
-        phrases=phrases,
-        path=f"{city_path}/access_profile_{language}.jpg",
-    )
-    # Spatial distribution maps
-    spatial_distribution_figures = [
-        {
-            "column": "all_cities_walkability",
-            "range": [-6, 6],
-            "label": f'{phrases["Neighbourhood walkability relative to 25 global cities"]}\n',
-            "tick_labels": [
-                phrases["Low"],
-                "",
-                "",
-                phrases["Average"],
-                "",
-                "",
-                phrases["High"],
-            ],
-            "outfile": f"{city_path}/all_cities_walkability_{language}.jpg",
-        },
-        {
-            "column": "pct_access_500m_pt_gtfs_freq_20_score",
-            "range": [0, 100],
-            "label": (
-                f"{phrases[('Percentage of population with access to public transport with service frequency of 20 minutes or less')]} "
-                f'({fnum(df.loc[city,"Public transport with regular service"],"0.0",locale)}%)'
-            ),
-            "tick_labels": None,
-            "outfile": f"{city_path}/pct_access_500m_pt_{language}.jpg",
-        },
-        {
-            "column": "pct_access_500m_public_open_space_large_score",
-            "range": [0, 100],
-            "label": (
-                f"{phrases[('Percentage of population with access to public open space of area 1.5 hectares or larger')]} "
-                f'({_pct(fnum(df.loc[city,"Large public open space"],"0.0",locale),locale)})'
-            ),
-            "tick_labels": None,
-            "outfile": f"{city_path}/pct_access_500m_public_open_space_large_score_{language}.jpg",
-        },
-    ]
-    if (
-        "pct_access_500m_pt_gtfs_freq_20_score"
-        not in gdf.describe().transpose().index
-    ):
-        spatial_distribution_figures[1][
-            "column"
-        ] = "pct_access_500m_pt_any_score"
-        spatial_distribution_figures[1]["label"] = (
-            f"{phrases['Percentage of population with access to public transport']}\n"
-            f'({_pct(fnum(df.loc[city,"Public transport stop"],"0.0",locale),locale)})'
-        )
-    for f in spatial_distribution_figures:
-        spatial_dist_map(
-            gdf,
-            column=f["column"],
-            range=f["range"],
-            label=f["label"],
-            tick_labels=f["tick_labels"],
-            cmap=cmap,
-            path=f["outfile"],
-            phrases=phrases,
-            locale=locale,
-        )
-    # Threshold maps
-    for row in threshold_scenarios["data"].index:
-        threshold_map(
-            gdf,
-            column=threshold_scenarios["lookup"][row]["field"],
-            scale=threshold_scenarios["lookup"][row]["scale"],
-            comparison=threshold_scenarios["lower_bound"].loc[row].location,
-            label=(
-                f"{phrases[threshold_scenarios['lookup'][row]['title']]} ({phrases['density_units']})"
-            ),
-            cmap=cmap,
-            path=f"{city_path}/{threshold_scenarios['lookup'][row]['field']}_{language}.jpg",
-            phrases=phrases,
-            locale=locale,
-        )
-    # Policy ratings
-    policy_rating(
-        range=[0, 24],
-        score=city_policy["Presence_rating"],
-        comparison=city_policy["Presence_global"],
-        label="",
-        comparison_label=phrases["25 city comparison"],
-        cmap=cmap,
-        locale=locale,
-        path=f"{city_path}/policy_presence_rating_{language}.jpg",
-    )
-    policy_rating(
-        range=[0, 57],
-        score=city_policy["Checklist_rating"],
-        comparison=city_policy["Checklist_global"],
-        label="",
-        comparison_label=phrases["25 city comparison"],
-        cmap=cmap,
-        locale=locale,
-        path=f"{city_path}/policy_checklist_rating_{language}.jpg",
-    )
-    return city_path
 
 
 def pdf_template_setup(
@@ -793,7 +805,6 @@ def pdf_template_setup(
     # read in elements
     elements = pd.read_excel(config.configuration, sheet_name=template)
     document_pages = elements.page.unique()
-
     # Conditional formatting to help avoid inappropriate line breaks and gaps in Tamil and Thai
     if language in ["Tamil", "Thai"]:
         elements["align"] = elements["align"].replace("J", "L")
@@ -805,21 +816,17 @@ def pdf_template_setup(
             ]
             - 1
         )
-
     if font is not None:
         elements.loc[elements.font == "custom", "font"] = font
-
     elements = elements.to_dict(orient="records")
     elements = [
         {k: v if not str(v) == "nan" else None for k, v in x.items()}
         for x in elements
     ]
-
     # Need to convert hexadecimal colours (eg FFFFFF is white) to
     # decimal colours for the fpdf Template class to work
     # We'll establish default hex colours for foreground and background
     planes = {"foreground": "000000", "background": "FFFFFF"}
-
     for i, element in enumerate(elements):
         for plane in planes:
             if elements[i][plane] is not None:
@@ -827,11 +834,9 @@ def pdf_template_setup(
                 elements[i][plane] = int(elements[i][plane], 16)
             else:
                 elements[i][plane] = int(planes[plane], 16)
-
     pages = {}
     for page in document_pages:
         pages[f"{page}"] = [x for x in elements if x["page"] == page]
-
     return pages
 
 
@@ -857,15 +862,15 @@ def format_pages(pages, phrases):
     return pages
 
 
-def prepare_phrases(config, city, language):
+def prepare_phrases(config, city, language, regions):
     """Prepare dictionary for specific language translation given English phrase."""
     languages = pd.read_excel(config.configuration, sheet_name="languages")
     phrases = json.loads(languages.set_index("name").to_json())[language]
     city_details = pd.read_excel(
-        config.configuration, sheet_name="city_details"
+        config.configuration, sheet_name="city_details", index_col="City"
     )
-    city_details = json.loads(city_details.set_index("City").to_json())
-    country_code = city_details["Country Code"][city]
+    country_code = regions[city]["region"]
+    # set default English country code
     if language == "English" and country_code not in ["AU", "GB", "US"]:
         country_code = "AU"
     phrases["locale"] = f'{phrases["language_code"]}_{country_code}'
@@ -939,11 +944,9 @@ def wrap_sentences(words, limit=50, delimiter=""):
             # append the final word if not yet appended
             if i == len(words) - 1:
                 sentences.append(sentence)
-
         # finally, append sentence of all words if still below limit
         if (i == len(words) - 1) and (sentences == []):
             sentences.append(sentence)
-
     return sentences
 
 
@@ -978,45 +981,26 @@ def prepare_pdf_fonts(pdf, config, language):
                     )
 
 
-def save_pdf_layout(
-    pdf, folder, template, language, city, by_city, by_language, filename
-):
+def save_pdf_layout(pdf, folder, template, filename):
     """
-    Save a PDF report in city, language, and template specific folder locations.
+    Save a PDF report in template subfolder in specified location.
     """
     if not os.path.exists(folder):
         os.mkdir(folder)
-
-    template_folder = f"{folder}/{template} reports"
+    template_folder = f"{folder}/_{template} reports"
     if not os.path.exists(template_folder):
         os.mkdir(template_folder)
-
-    paths = []
-    if by_city:
-        if not os.path.exists(f"{template_folder}/by_city"):
-            os.mkdir(f"{template_folder}/by_city")
-        paths.append(f"{template_folder}/by_city/{city}")
-
-    if by_language:
-        paths.append(f"{template_folder}/{language}")
-
-    for path in paths:
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-        pdf.output(f"{path}/{filename}")
-
-    return f"Scorecard generated ({paths}): {filename}"
+    pdf.output(f"{template_folder}/{filename}")
+    return f"Scorecard generated ({template_folder}):\n{filename}\n"
 
 
 def generate_scorecard(
-    city,
-    phrases,
-    city_policy,
-    threshold_scenarios,
     config,
+    phrases,
+    indicators,
+    city_policy,
     language="English",
-    template="template_web",
+    template="web",
     font=None,
 ):
     """
@@ -1028,52 +1012,40 @@ def generate_scorecard(
     # Set up PDF document template pages
     pages = pdf_template_setup(config, "template_web", font, language,)
     pages = format_pages(pages, phrases)
-
     # initialise PDF
     pdf = FPDF(orientation="portrait", format="A4", unit="mm")
-
     # set up fonts
     prepare_pdf_fonts(pdf, config, language)
-
     pdf.set_author(phrases["metadata_author"])
     pdf.set_title(f"{phrases['metadata_title1']} {phrases['metadata_title2']}")
     pdf.set_auto_page_break(False)
-
-    if template.startswith("template_web"):
+    if template == "web":
         pdf = pdf_for_web(
             pdf,
             pages,
-            city,
+            config,
             language,
             locale,
             phrases,
-            threshold_scenarios,
+            indicators,
             city_policy,
         )
-    elif template.startswith("template_print"):
+    elif template == "print":
         pdf = pdf_for_print(
             pdf,
             pages,
-            city,
+            config,
             language,
             locale,
             phrases,
-            threshold_scenarios,
+            indicators,
             city_policy,
         )
-
     # Output report pdf
     filename = f"{phrases['city_name']} - {phrases['title_series_line1'].replace(':','')} - GHSCIC 2022 - {phrases['vernacular']}.pdf"
     if phrases["_export"] == 1:
         capture_result = save_pdf_layout(
-            pdf,
-            folder="scorecards",
-            template=f'{template.replace("template", "")}',
-            language=language,
-            city=city,
-            by_city=config.by_city,
-            by_language=config.by_language,
-            filename=filename,
+            pdf, folder=config.city_path, template=template, filename=filename,
         )
         return capture_result
     else:
@@ -1081,25 +1053,19 @@ def generate_scorecard(
 
 
 def pdf_for_web(
-    pdf,
-    pages,
-    city,
-    language,
-    locale,
-    phrases,
-    threshold_scenarios,
-    city_policy,
+    pdf, pages, config, language, locale, phrases, indicators, city_policy,
 ):
+    city = config.city
+    city_path = config.city_path
+    figure_path = f"{city_path}/figures"
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
-    if os.path.exists(f"hero_images/{city}-1.jpg"):
-        template["hero_image"] = f"hero_images/{city}-1.jpg"
+    if os.path.exists(f"{city_path}/hero_images/{city}-1.jpg"):
+        template["hero_image"] = f"{city_path}/hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
@@ -1114,39 +1080,43 @@ def pdf_for_web(
     if phrases["translation_names"] is None:
         template["translation"] = ""
         template["translation_names"] = ""
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
-
     template[
         "introduction"
     ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
         **phrases
     )
-
     ## Access profile plot
-    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
+    template["access_profile"] = f"{figure_path}/access_profile_{language}.jpg"
     ## Walkability plot
     template[
         "all_cities_walkability"
-    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    ] = f"{figure_path}/all_cities_walkability_{language}.jpg"
     template["walkability_above_median_pct"] = phrases[
         "walkability_above_median_pct"
     ].format(
-        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+        _pct(
+            fnum(
+                indicators["report"]["walkability"][
+                    "walkability_above_median_pct"
+                ],
+                "0.0",
+                locale,
+            ),
+            locale,
+        )
     )
     ## Policy ratings
     template[
         "presence_rating"
-    ] = f"cities/{city}/policy_presence_rating_{language}.jpg"
+    ] = f"{figure_path}/policy_presence_rating_{language}.jpg"
     template[
         "quality_rating"
-    ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
+    ] = f"{figure_path}/policy_checklist_rating_{language}.jpg"
     template["city_header"] = phrases["city_name"]
-
     ## City planning requirement presence (round 0.5 up to 1)
     policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
     for x in range(1, 7):
@@ -1161,63 +1131,56 @@ def pdf_for_web(
                 locale,
                 length="short",
             )
-
     ## Walkable neighbourhood policy checklist
     for i, policy in enumerate(city_policy["Checklist"].index):
         row = i + 1
         for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
             col = j + 1
             template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["4"])
     ## Density plots
     template[
         "local_nh_population_density"
-    ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
-
+    ] = f"{figure_path}/local_nh_population_density_{language}.jpg"
     template[
         "local_nh_intersection_density"
-    ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
-
+    ] = f"{figure_path}/local_nh_intersection_density_{language}.jpg"
     ## Density threshold captions
-    for row in threshold_scenarios["data"].index:
-        template[row] = phrases[f"optimal_range - {row}"].format(
+    for scenario in indicators["report"]["thresholds"]:
+        template[scenario] = phrases[f"optimal_range - {scenario}"].format(
             _pct(
                 fnum(
-                    threshold_scenarios["data"].loc[row, city], "0.0", locale
+                    indicators["report"]["thresholds"][scenario]["pct"],
+                    "0.0",
+                    locale,
                 ),
                 locale,
             ),
             fnum(
-                threshold_scenarios["lower_bound"].loc[row].location,
+                indicators["report"]["thresholds"][scenario]["criteria"],
                 "#,000",
                 locale,
             ),
             phrases["density_units"],
         )
-
-    if os.path.exists(f"hero_images/{city}-2.jpg"):
-        template["hero_image_2"] = f"hero_images/{city}-2.jpg"
+    if os.path.exists(f"{city_path}/hero_images/{city}-2.jpg"):
+        template["hero_image_2"] = f"{city_path}/hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""
         template["credit_image2"] = phrases["credit_image2"]
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
     template[
         "pct_access_500m_pt.jpg"
-    ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
+    ] = f"{figure_path}/pct_access_500m_pt_{language}.jpg"
     template[
         "pct_access_500m_public_open_space_large_score"
-    ] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
+    ] = f"{figure_path}/pct_access_500m_public_open_space_large_score_{language}.jpg"
     template["city_text"] = phrases[f"{city} - Summary"]
-
     ## Checklist ratings for PT and POS
     for analysis in ["PT", "POS"]:
         for i, policy in enumerate(city_policy[analysis].index):
@@ -1225,37 +1188,28 @@ def pdf_for_web(
             for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
                 col = j + 1
                 template[f"policy_{analysis}_text{row}_response{col}"] = item
-
     template.render()
-
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["6"])
     template.render()
-
     return pdf
 
 
 def pdf_for_print(
-    pdf,
-    pages,
-    city,
-    language,
-    locale,
-    phrases,
-    threshold_scenarios,
-    city_policy,
+    pdf, pages, config, language, locale, phrases, indicators, city_policy,
 ):
+    city = config.city
+    city_path = config.city_path
+    figure_path = f"{city_path}/figures"
     # Set up Cover page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["1"])
-    if os.path.exists(f"hero_images/{city}-1.jpg"):
-        template["hero_image"] = f"hero_images/{city}-1.jpg"
+    if os.path.exists(f"{city_path}/hero_images/{city}-1.jpg"):
+        template["hero_image"] = f"{city_path}/hero_images/{city}-1.jpg"
         template["hero_alt"] = ""
         template["credit_image1"] = phrases["credit_image1"]
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["2"])
@@ -1271,34 +1225,27 @@ def pdf_for_print(
         template["translation"] = ""
         template["translation_names"] = ""
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["3"])
-
     template[
         "introduction"
     ] = f"{phrases['series_intro']}\n\n{phrases['series_interpretation']}".format(
         **phrases
     )
-
     ## Policy ratings
     template[
         "presence_rating"
-    ] = f"cities/{city}/policy_presence_rating_{language}.jpg"
+    ] = f"{figure_path}/policy_presence_rating_{language}.jpg"
     template[
         "quality_rating"
-    ] = f"cities/{city}/policy_checklist_rating_{language}.jpg"
-
+    ] = f"{figure_path}/policy_checklist_rating_{language}.jpg"
     ## Access profile plot
-    template["access_profile"] = f"cities/{city}/access_profile_{language}.jpg"
-
+    template["access_profile"] = f"{figure_path}/access_profile_{language}.jpg"
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["4"])
-
     ## City planning requirement presence (round 0.5 up to 1)
     template["city_header"] = phrases["city_name"]
     policy_indicators = {0: "✗", 0.5: "~", 1: "✓"}
@@ -1314,20 +1261,27 @@ def pdf_for_print(
                 locale,
                 length="short",
             )
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["5"])
     ## Walkability plot
     template[
         "all_cities_walkability"
-    ] = f"cities/{city}/all_cities_walkability_{language}.jpg"
+    ] = f"{figure_path}/all_cities_walkability_{language}.jpg"
     template["walkability_above_median_pct"] = phrases[
         "walkability_above_median_pct"
     ].format(
-        _pct(fnum(threshold_scenarios["walkability"], "0.0", locale), locale)
+        _pct(
+            fnum(
+                indicators["report"]["walkability"][
+                    "walkability_above_median_pct"
+                ],
+                "0.0",
+                locale,
+            ),
+            locale,
+        )
     )
     ## Walkable neighbourhood policy checklist
     for i, policy in enumerate(city_policy["Checklist"].index):
@@ -1335,56 +1289,50 @@ def pdf_for_print(
         for j, item in enumerate([x for x in city_policy["Checklist"][i][0]]):
             col = j + 1
             template[f"policy_{'Checklist'}_text{row}_response{col}"] = item
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["6"])
     ## Density plots
     template[
         "local_nh_population_density"
-    ] = f"cities/{city}/local_nh_population_density_{language}.jpg"
-
+    ] = f"{figure_path}/local_nh_population_density_{language}.jpg"
     template[
         "local_nh_intersection_density"
-    ] = f"cities/{city}/local_nh_intersection_density_{language}.jpg"
-
+    ] = f"{figure_path}/local_nh_intersection_density_{language}.jpg"
     ## Density threshold captions
-    for row in threshold_scenarios["data"].index:
-        template[row] = phrases[f"optimal_range - {row}"].format(
+    for scenario in indicators["report"]["thresholds"]:
+        template[scenario] = phrases[f"optimal_range - {scenario}"].format(
             _pct(
                 fnum(
-                    threshold_scenarios["data"].loc[row, city], "0.0", locale
+                    indicators["report"]["thresholds"][scenario]["pct"],
+                    "0.0",
+                    locale,
                 ),
                 locale,
             ),
             fnum(
-                threshold_scenarios["lower_bound"].loc[row].location,
+                indicators["report"]["thresholds"][scenario]["criteria"],
                 "#,000",
                 locale,
             ),
             phrases["density_units"],
         )
-
-    if os.path.exists(f"hero_images/{city}-2.jpg"):
-        template["hero_image_2"] = f"hero_images/{city}-2.jpg"
+    if os.path.exists(f"{city_path}/hero_images/{city}-2.jpg"):
+        template["hero_image_2"] = f"{city_path}/hero_images/{city}-2.jpg"
         template["hero_alt_2"] = ""
         template["credit_image2"] = phrases["credit_image2"]
-
     template.render()
-
     # Set up next page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["7"])
     template[
         "pct_access_500m_pt.jpg"
-    ] = f"cities/{city}/pct_access_500m_pt_{language}.jpg"
+    ] = f"{figure_path}/pct_access_500m_pt_{language}.jpg"
     template[
         "pct_access_500m_public_open_space_large_score"
-    ] = f"cities/{city}/pct_access_500m_public_open_space_large_score_{language}.jpg"
+    ] = f"{figure_path}/pct_access_500m_public_open_space_large_score_{language}.jpg"
     template["city_text"] = phrases[f"{city} - Summary"]
-
     ## Checklist ratings for PT and POS
     for analysis in ["PT", "POS"]:
         for i, policy in enumerate(city_policy[analysis].index):
@@ -1392,94 +1340,10 @@ def pdf_for_print(
             for j, item in enumerate([x for x in city_policy[analysis][i][0]]):
                 col = j + 1
                 template[f"policy_{analysis}_text{row}_response{col}"] = item
-
     template.render()
-
     # Set up last page
     pdf.add_page()
     template = FlexTemplate(pdf, elements=pages["8"])
-
     template["licence_image"] = "logos/by-nc.jpg"
     template.render()
-
     return pdf
-
-
-def policy_data_setup(policy_lookup):
-    """
-    Returns a pretty complicated dictionary of policy data,
-    formatted according to the policy lookup configuration json.
-    Should be simplified, really.
-    """
-    df_labels = pd.read_excel(
-        policy_lookup["worksheet"],
-        sheet_name=policy_lookup["column_formatting"],
-        index_col=0,
-    )
-    df_labels = df_labels[~df_labels["Display"].isna()].sort_values(
-        by=["Display", "Order"]
-    )
-
-    df_policy = {}
-
-    for policy_analysis in policy_lookup["analyses"]:
-        df_policy[policy_analysis] = pd.read_excel(
-            io=policy_lookup["worksheet"],
-            sheet_name=policy_lookup["analyses"][policy_analysis][
-                "sheet_name"
-            ],
-            header=policy_lookup["parameters"]["header"],
-            nrows=policy_lookup["parameters"]["nrows"],
-            index_col=policy_lookup["parameters"]["index_col"],
-        )
-        if policy_analysis == "Presence":
-            # get percentage of policies meeting requirements stratified by income GDP groups
-            df_policy[f"{policy_analysis}_gdp"] = round(
-                (
-                    100
-                    * df_policy["Presence"]
-                    .loc[:, df_policy["Presence"].columns[:-1]]
-                    .replace(0.5, 1)
-                    .groupby(df_policy["Presence"]["GDP"] == "High-income")[
-                        df_policy["Presence"].columns[2:-1]
-                    ]
-                    .mean()
-                    .transpose()
-                ),
-                0,
-            )
-            df_policy[f"{policy_analysis}_gdp"].columns = [
-                "middle",
-                "upper",
-            ]
-            # restrict to policies of interest
-            df_policy[f"{policy_analysis}_gdp"] = df_policy[
-                f"{policy_analysis}_gdp"
-            ].loc[
-                [
-                    x
-                    for x in df_labels.loc[
-                        df_labels["Display"] == "Presence"
-                    ].index
-                    if x in df_policy[f"{policy_analysis}_gdp"].index
-                ]
-            ]
-            # format with short labels
-            df_policy[f"{policy_analysis}_gdp"].index = df_labels.loc[
-                df_policy[f"{policy_analysis}_gdp"].index, "Label"
-            ].values
-        if policy_analysis in ["Presence", "Checklist"]:
-            # store overall rating for this analysis
-            df_policy[f"{policy_analysis}_rating"] = df_policy[
-                policy_analysis
-            ].loc[:, policy_lookup["analyses"][policy_analysis]["column"]]
-        # only retain relevant columns for this analysis
-        df_policy[policy_analysis] = df_policy[policy_analysis][
-            df_labels[df_labels["Display"] == policy_analysis].index
-        ]
-        if policy_analysis != "Presence":
-            # parse checklist
-            df_policy[policy_analysis] = df_policy[policy_analysis].apply(
-                lambda x: x.str.split(":"), axis=1
-            )
-    return df_policy

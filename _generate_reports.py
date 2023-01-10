@@ -7,35 +7,28 @@ import argparse
 import os
 import sys
 
-import pandas as pd
-
 # import and set up functions
-import _data_setup
 import _report_functions
-from batlow import batlow_map
 
 sys.path.insert(0, "../../process/pre_process")
-from _project_setup import *
+from _project_setup import indicators, locale, policies, regions
 
 # Set up commandline input parsing
 parser = argparse.ArgumentParser(
-    description="Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study"
+    description="Reports and infographic scorecards for the Global Healthy and Sustainable City Indicators Collaboration"
 )
 
 parser.add_argument(
-    "--cities",
-    default="Maiduguri,Mexico City,Baltimore,Phoenix,Seattle,Sao Paulo,Hong Kong,Chennai,Bangkok,Hanoi,Graz,Ghent,Bern,Olomouc,Cologne,Odense,Barcelona,Valencia,Vic,Belfast,Lisbon,Adelaide,Melbourne,Sydney,Auckland",
-    help=(
-        "A list of cities, for example: Baltimore, Phoenix, Seattle, Adelaide, Melbourne, "
-        "Sydney, Auckland, Bern, Odense, Graz, Cologne, Ghent, Belfast, Barcelona, Valencia, Vic, "
-        "Lisbon, Olomouc, Hong, Kong, Mexico City, Sao, Paulo, Bangkok, Hanoi, Maiduguri, Chennai"
-    ),
+    "--city",
+    default=locale,
+    type=str,
+    help="The city for which reports are to be generated.",
 )
 
 parser.add_argument(
     "--generate_resources",
     action="store_true",
-    default=False,
+    default=True,
     help="Generate images from input data for each city? Default is False.",
 )
 
@@ -54,22 +47,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--by_city",
-    action="store_true",
-    default=True,
-    help="Save reports in city-specific sub-folders.",
-)
-
-parser.add_argument(
-    "--by_language",
-    action="store_true",
-    default=True,
-    help="Save reports in language-specific sub-folders (default).",
-)
-
-parser.add_argument(
     "--templates",
-    default="web",
+    nargs="+",
+    default=["web"],
     help=(
         'A list of templates to iterate outputs over, for example: "web" (default), or "web,print"\n'
         'The words listed correspond to sheets present in the configuration file, prefixed by "template_",'
@@ -87,18 +67,36 @@ parser.add_argument(
     ),
 )
 
-
 config = parser.parse_args()
-templates = [f"template_{x.strip()}" for x in config.templates.split(",")]
-cmap = batlow_map
+config.city_path = regions[config.city]["locale_dir"]
+if not os.path.exists(config.city_path):
+    sys.exit(
+        f"\n\nProcessed resource folder for this city couldn't be located:"
+        f"\n[{config.city_path}]"
+        "\nPlease ensure city has been successfully processed before continuing\n"
+    )
+
+# # for debugging only
+# languages = _report_functions.get_and_setup_language_cities(config)
+# language = 'English'
+
+# _report_functions.generate_report_for_language(
+# config,
+# language,
+# indicators,
+# regions,
+# policies
+# )
+
+
+def main():
+    languages = _report_functions.get_and_setup_language_cities(config)
+    for language in languages:
+        # print(f"\{language} language reports:")
+        _report_functions.generate_report_for_language(
+            config, language, indicators, regions, policies
+        )
 
 
 if __name__ == "__main__":
-    # Run all specified language-city permutations if auto-language detection
-    languages = _report_functions.get_and_setup_language_cities(config)
-
-    for language in languages.index:
-        cities = languages[language]
-        _report_functions.generate_report_for_language(
-            config, language, cities, indicators
-        )
+    main()

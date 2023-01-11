@@ -29,7 +29,7 @@ parser.add_argument(
     "--generate_resources",
     action="store_true",
     default=True,
-    help="Generate images from input data for each city? Default is False.",
+    help="Generate images from input data for each city? Default is True.",
 )
 
 parser.add_argument(
@@ -42,8 +42,8 @@ parser.add_argument(
 parser.add_argument(
     "--auto_language",
     action="store_true",
-    default=False,
-    help="Identify all languages associated with specified cities and prepare reports for these.",
+    default=True,
+    help="Identify all languages associated with specified cities and prepare reports for these.  Default is True.",
 )
 
 parser.add_argument(

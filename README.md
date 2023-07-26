@@ -1,5 +1,7 @@
 # Scorecards for the Global Healthy and Sustainable Cities Indicator Collaboration Study
 
+_The functionality of this code has now been fully incorporated into the current version of our [Global Healthy and Sustainable City Indicators software](https://github.com/global-healthy-liveable-cities/global-indicators).  The code here specifically supplemented [v1.0.0](https://github.com/global-healthy-liveable-cities/global-indicators/releases/tag/v1.0.0) of the tool, designed to produce analyses and reports for 25 cities as part of the [Lancet Global Health Series on Urban Design, Transport and Health](https://www.thelancet.com/series/urban-design-2022)._
+
 The code in this repository draws on results from the [Global Healthy and Sustainable Cities Indicator Collaboration Study](https://github.com/global-healthy-liveable-cities/global-indicators) to generate policy 'scorecard' reports.
 
 The respository is located as a subfolder of the study's spatial components repository, located within the [analysis](https://github.com/global-healthy-liveable-cities/global-indicators/tree/main/analysis) folder.
